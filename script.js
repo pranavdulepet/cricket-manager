@@ -431,6 +431,17 @@
       triggerRivalScout();
     });
 
+    // Event delegation for scorecard buttons in recent matches
+    refs.recentMatches?.addEventListener("click", (e) => {
+      const btn = e.target.closest(".sc-view-btn");
+      if (!btn) return;
+      e.stopPropagation();
+      const idx = parseInt(btn.closest(".match-entry")?.dataset.matchIdx, 10);
+      if (!isNaN(idx) && state?.season?.recentMatches?.[idx]) {
+        showScorecardModal(state.season.recentMatches[idx]);
+      }
+    });
+
     refs.runScenarioBtn?.addEventListener("click", () => {
       runScenarioMode();
     });
@@ -2102,27 +2113,24 @@
     return true;
   }
 
+  const STAT_DEFAULTS = {
+    pomAwards: 0, matches: 0,
+    innings: 0, notOuts: 0, runs: 0, ballsFaced: 0, fours: 0, sixes: 0,
+    highScore: 0, highScoreNotOut: false, fifties: 0, hundreds: 0,
+    oversBowled: 0, runsConceded: 0, wickets: 0, dots: 0,
+    bestBowlingWickets: 0, bestBowlingRuns: 999,
+    catches: 0,
+  };
+
   function ensureSeasonStat(playerId) {
     if (!state.seasonStats[playerId]) {
-      state.seasonStats[playerId] = {
-        pomAwards: 0, matches: 0,
-        // Batting
-        innings: 0, notOuts: 0, runs: 0, ballsFaced: 0, fours: 0, sixes: 0,
-        highScore: 0, highScoreNotOut: false, fifties: 0, hundreds: 0,
-        // Bowling
-        oversBowled: 0, runsConceded: 0, wickets: 0, dots: 0,
-        bestBowlingWickets: 0, bestBowlingRuns: 999,
-        // Fielding
-        catches: 0,
-      };
-    }
-    // Migrate old saves that only had the simple structure
-    const s = state.seasonStats[playerId];
-    if (s.innings === undefined) {
-      s.innings = 0; s.notOuts = 0; s.ballsFaced = 0; s.fours = 0; s.sixes = 0;
-      s.highScore = 0; s.highScoreNotOut = false; s.fifties = 0; s.hundreds = 0;
-      s.oversBowled = 0; s.runsConceded = 0; s.dots = 0;
-      s.bestBowlingWickets = 0; s.bestBowlingRuns = 999; s.catches = 0;
+      state.seasonStats[playerId] = { ...STAT_DEFAULTS };
+    } else {
+      // Fill any missing keys from schema (handles partial migrations)
+      const s = state.seasonStats[playerId];
+      for (const key of Object.keys(STAT_DEFAULTS)) {
+        if (s[key] === undefined) s[key] = STAT_DEFAULTS[key];
+      }
     }
   }
 
@@ -2140,12 +2148,12 @@
     [result.innings1, result.innings2].forEach((inn) => {
       if (!inn?.scorecard) {
         // Fallback for old results without scorecards
-        if (inn?.topScorerData) {
+        if (inn?.topScorerData?.id) {
           ensureSeasonStat(inn.topScorerData.id);
           state.seasonStats[inn.topScorerData.id].runs += inn.topScorerData.runs;
           state.seasonStats[inn.topScorerData.id].matches += 1;
         }
-        if (inn?.topWicketTakerData) {
+        if (inn?.topWicketTakerData?.id) {
           ensureSeasonStat(inn.topWicketTakerData.id);
           state.seasonStats[inn.topWicketTakerData.id].wickets += inn.topWicketTakerData.wickets;
         }
@@ -2156,7 +2164,8 @@
       const matchedIds = new Set();
 
       // Batting stats from scorecard
-      for (const b of sc.battingCard) {
+      for (const b of (sc.battingCard ?? [])) {
+        if (!b?.id) continue;
         ensureSeasonStat(b.id);
         const s = state.seasonStats[b.id];
         if (!matchedIds.has(b.id)) { s.matches += 1; matchedIds.add(b.id); }
@@ -2174,8 +2183,13 @@
         else if (b.runs >= 50) s.fifties += 1;
       }
 
-      // Bowling stats from scorecard
-      for (const bw of sc.bowlingCard) {
+      // Bowling stats + catch distribution (merged into single loop)
+      const totalWkts = inn.wickets ?? 0;
+      const catchesToAssign = Math.max(0, totalWkts - Math.floor(nextRandom() * 3));
+      const bowlers = sc.bowlingCard ?? [];
+      for (let i = 0; i < bowlers.length; i++) {
+        const bw = bowlers[i];
+        if (!bw?.id) continue;
         ensureSeasonStat(bw.id);
         const s = state.seasonStats[bw.id];
         if (!matchedIds.has(bw.id)) { s.matches += 1; matchedIds.add(bw.id); }
@@ -2183,7 +2197,6 @@
         s.runsConceded += bw.runsConceded;
         s.wickets += bw.wickets;
         s.dots += bw.dots;
-        // Best bowling figures
         if (bw.wickets > s.bestBowlingWickets ||
             (bw.wickets === s.bestBowlingWickets && bw.runsConceded < s.bestBowlingRuns)) {
           s.bestBowlingWickets = bw.wickets;
@@ -2191,15 +2204,14 @@
         }
       }
 
-      // Generate some catches from fielding (proportional to wickets, minus bowled/lbw)
-      const totalWkts = inn.wickets;
-      const catches = Math.max(0, totalWkts - Math.floor(nextRandom() * 3));
-      if (catches > 0 && sc.bowlingCard.length > 0) {
-        // Distribute catches to fielders (batting side of the other team bowled)
-        for (let c = 0; c < catches; c++) {
-          const fielder = sc.bowlingCard[Math.floor(nextRandom() * sc.bowlingCard.length)];
-          ensureSeasonStat(fielder.id);
-          state.seasonStats[fielder.id].catches += 1;
+      // Distribute catches across bowlers/fielders
+      if (catchesToAssign > 0 && bowlers.length > 0) {
+        for (let c = 0; c < catchesToAssign; c++) {
+          const fielder = bowlers[Math.floor(nextRandom() * bowlers.length)];
+          if (fielder?.id) {
+            ensureSeasonStat(fielder.id);
+            state.seasonStats[fielder.id].catches += 1;
+          }
         }
       }
     });
@@ -2682,6 +2694,10 @@
    * Distributes runs/wickets across the lineup based on ratings + randomness.
    */
   function generateScorecard(totalScore, totalWickets, battingLineup, bowlingLineup) {
+    if (!battingLineup?.length || !bowlingLineup?.length) {
+      return { battingCard: [], bowlingCard: [] };
+    }
+    totalWickets = clamp(totalWickets, 0, Math.max(0, battingLineup.length - 1));
     // ── BATTING CARD ──
     // Sort lineup by batting position: WK/BAT first, then AR, then BWL
     const posOrder = { WK: 0, BAT: 1, AR: 2, BWL: 3 };
@@ -3760,6 +3776,8 @@
   let statsTab = "batting";
   let statsSortKey = "runs";
   let statsSortDir = -1; // -1 = descending
+  let statsDirty = true; // gate renderStats to avoid rebuilding on every render()
+  let lastStatsMatchCount = -1;
 
   function render() {
     renderTopBar();
@@ -4144,7 +4162,7 @@
 
     refs.recentMatches.innerHTML = state.season.recentMatches.length
       ? state.season.recentMatches
-          .map((match) => {
+          .map((match, idx) => {
             const isUser = match.homeId === state.userFranchiseId || match.awayId === state.userFranchiseId;
             const chips = (match.tacticChips ?? []).slice(0, 3)
               .map((c) => `<span class="tactic-chip ${c.type}">${c.label}</span>`).join("");
@@ -4153,7 +4171,7 @@
               : "";
             const hasCard = match.innings1Scorecard || match.innings2Scorecard;
             return `
-              <article class="match-entry${isUser ? " user-match" : ""}" ${hasCard ? `data-match-idx="${state.season.recentMatches.indexOf(match)}"` : ""}>
+              <article class="match-entry${isUser ? " user-match" : ""}" ${hasCard ? `data-match-idx="${idx}"` : ""}>
                 <strong>${getTeamById(match.homeId).short} ${match.homeScore} — ${getTeamById(match.awayId).short} ${match.awayScore}</strong>
                 <span class="match-meta">${match.phase} · ${match.margin} · POM: ${match.playerOfMatch}</span>
                 ${pitchBit || chips ? `<div class="match-tactic-tags">${pitchBit}${chips}</div>` : ""}
@@ -4162,15 +4180,6 @@
             `;
           }).join("")
       : '<p class="empty-state">No matches simulated yet.</p>';
-
-    // Wire scorecard buttons
-    refs.recentMatches.querySelectorAll(".sc-view-btn").forEach((btn) => {
-      btn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        const idx = parseInt(btn.closest(".match-entry").dataset.matchIdx, 10);
-        if (!isNaN(idx)) showScorecardModal(state.season.recentMatches[idx]);
-      }, { once: true });
-    });
 
     // Enhanced points table with team badges and qualification line
     const sorted = getSortedTable();
@@ -4264,13 +4273,19 @@
 
   // ── Stats Database ──────────────────────────────────────────────────────────
 
-  function renderStats() {
+  function renderStats(force = false) {
     if (!state || !refs.statsTableWrap) return;
     const seasonActive = state.season?.status && state.season.status !== "locked";
     if (!seasonActive || Object.keys(state.seasonStats).length === 0) {
       refs.statsTableWrap.innerHTML = '<p class="muted-text">Play matches to populate stats.</p>';
+      lastStatsMatchCount = -1;
       return;
     }
+    // Skip rebuild if nothing changed since last render
+    const currentMatchCount = state.season.recentMatches?.length ?? 0;
+    if (!force && !statsDirty && lastStatsMatchCount === currentMatchCount) return;
+    statsDirty = false;
+    lastStatsMatchCount = currentMatchCount;
 
     // Populate team filter if not already done
     if (refs.statsTeamFilter.options.length <= 1) {
@@ -4285,13 +4300,21 @@
     const teamFilter = refs.statsTeamFilter.value;
     const roleFilter = refs.statsRoleFilter.value;
 
+    // Build lookup maps for O(1) player/team resolution
+    const playerMap = {};
+    for (const p of state.players) playerMap[p.id] = p;
+    const playerTeamMap = {};
+    for (const f of state.franchises) {
+      for (const pid of f.squad) playerTeamMap[pid] = f;
+    }
+
     // Build rows from seasonStats
     const rows = [];
     for (const [playerId, s] of Object.entries(state.seasonStats)) {
       if ((s.matches ?? 0) === 0) continue;
-      const player = state.players.find((p) => p.id === playerId);
+      const player = playerMap[playerId];
       if (!player) continue;
-      const team = state.franchises.find((t) => t.squad.includes(playerId));
+      const team = playerTeamMap[playerId];
       if (!team) continue;
 
       // Filters
@@ -4400,16 +4423,6 @@
         <tbody>${bodyRows}</tbody>
       </table>
     `;
-
-    // Wire up sort headers
-    refs.statsTableWrap.querySelectorAll("th.sortable").forEach((th) => {
-      th.addEventListener("click", () => {
-        const key = th.dataset.sort;
-        if (statsSortKey === key) statsSortDir *= -1;
-        else { statsSortKey = key; statsSortDir = -1; }
-        renderStats();
-      }, { once: true });
-    });
   }
 
   function initStatsListeners() {
@@ -4418,18 +4431,28 @@
       statsTab = "batting"; statsSortKey = "runs"; statsSortDir = -1;
       refs.statsBattingTab.classList.add("active");
       refs.statsBowlingTab.classList.remove("active");
-      renderStats();
+      renderStats(true);
     });
     refs.statsBowlingTab?.addEventListener("click", () => {
       statsTab = "bowling"; statsSortKey = "wickets"; statsSortDir = -1;
       refs.statsBowlingTab.classList.add("active");
       refs.statsBattingTab.classList.remove("active");
-      renderStats();
+      renderStats(true);
     });
     // Filters
-    refs.statsSearch?.addEventListener("input", () => renderStats());
-    refs.statsTeamFilter?.addEventListener("change", () => renderStats());
-    refs.statsRoleFilter?.addEventListener("change", () => renderStats());
+    refs.statsSearch?.addEventListener("input", () => renderStats(true));
+    refs.statsTeamFilter?.addEventListener("change", () => renderStats(true));
+    refs.statsRoleFilter?.addEventListener("change", () => renderStats(true));
+
+    // Event delegation for sort headers (avoids re-attaching in render loop)
+    refs.statsTableWrap?.addEventListener("click", (e) => {
+      const th = e.target.closest("th.sortable");
+      if (!th) return;
+      const key = th.dataset.sort;
+      if (statsSortKey === key) statsSortDir *= -1;
+      else { statsSortKey = key; statsSortDir = -1; }
+      renderStats(true);
+    });
   }
 
   // ── Scorecard Modal (view from recent matches) ──────────────────────────────
