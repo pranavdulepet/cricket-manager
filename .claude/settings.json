@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Users/macbookair/Desktop/desktop-subfolder/cricket-manager/**)",
+      "Bash(node -e \":*)",
+      "Bash(python3 -c \":*)",
+      "Bash(node -c script.js)"
+    ]
+  }
+}

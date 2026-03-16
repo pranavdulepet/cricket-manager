@@ -194,6 +194,7 @@
                   <p class="section-kicker">Game Theory</p>
                   <h2>Rival Heat</h2>
                 </div>
+                <button id="scoutRivalBtn" class="button button-secondary scout-btn">Scout Rival (0.20 cr)</button>
               </div>
               <div id="rivalBoard" class="rival-board"></div>
             </section>
@@ -231,6 +232,58 @@
                 <p class="section-kicker">Table</p>
                 <div id="pointsTable" class="points-table"></div>
               </section>
+            </div>
+            <section class="scenario-box">
+              <div class="section-head">
+                <div>
+                  <p class="section-kicker">Scenario Mode</p>
+                  <h3>Pressure Situations</h3>
+                </div>
+              </div>
+              <div class="scenario-controls">
+                <select id="scenarioOpponent" class="stats-select"></select>
+                <select id="scenarioPitch" class="stats-select">
+                  <option value="flat">Flat Deck</option>
+                  <option value="green">Green Seamer</option>
+                  <option value="dusty">Dusty Turner</option>
+                  <option value="slow">Slow Grip</option>
+                </select>
+                <input id="scenarioRunsNeeded" class="stats-search" type="number" min="1" max="120" value="45" />
+                <input id="scenarioOversLeft" class="stats-search" type="number" min="1" max="20" value="5" />
+                <input id="scenarioWktsInHand" class="stats-search" type="number" min="1" max="10" value="6" />
+                <button id="runScenarioBtn" class="button button-primary">Run Scenario</button>
+              </div>
+              <div id="scenarioOutput" class="season-summary muted-text">Set a chase equation and test decision pressure.</div>
+            </section>
+          </section>
+
+          <!-- Stats Database -->
+          <section class="card stats-card" id="statsSection">
+            <div class="section-head">
+              <div>
+                <p class="section-kicker">Player Database</p>
+                <h2>Season Stats</h2>
+              </div>
+              <div class="stats-toggle-row">
+                <button class="button button-secondary stats-tab active" data-stat-tab="batting" id="statsBattingTab">Batting</button>
+                <button class="button button-secondary stats-tab" data-stat-tab="bowling" id="statsBowlingTab">Bowling</button>
+              </div>
+            </div>
+            <div class="stats-filters">
+              <input type="text" id="statsSearch" class="stats-search" placeholder="Search player..." />
+              <select id="statsTeamFilter" class="stats-select">
+                <option value="all">All Teams</option>
+              </select>
+              <select id="statsRoleFilter" class="stats-select">
+                <option value="all">All Roles</option>
+                <option value="BAT">Batters</option>
+                <option value="BWL">Bowlers</option>
+                <option value="AR">All-Rounders</option>
+                <option value="WK">Wicketkeepers</option>
+              </select>
+            </div>
+            <div id="statsTableWrap" class="stats-table-wrap">
+              <p class="muted-text">Play matches to populate stats.</p>
             </div>
           </section>
         </section>
@@ -392,8 +445,20 @@
             <div class="tactic-options" id="powerplayTacticOpts"></div>
           </div>
           <div class="tactic-group">
+            <p class="tactic-group-label">Middle Overs Plan</p>
+            <div class="tactic-options" id="middleTacticOpts"></div>
+          </div>
+          <div class="tactic-group">
             <p class="tactic-group-label">Death Overs</p>
             <div class="tactic-options" id="deathTacticOpts"></div>
+          </div>
+          <div class="tactic-group">
+            <p class="tactic-group-label">Field Setting</p>
+            <div class="tactic-options" id="fieldTacticOpts"></div>
+          </div>
+          <div class="tactic-group">
+            <p class="tactic-group-label">Captaincy Style</p>
+            <div class="tactic-options" id="captaincyTacticOpts"></div>
           </div>
           <p id="tacticAdvisor" class="tactic-advisor">Pick your tactics above.</p>
           <div class="setup-actions">

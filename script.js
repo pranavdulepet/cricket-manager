@@ -8,6 +8,9 @@
     BATTING_TACTICS,
     POWERPLAY_TACTICS,
     DEATH_TACTICS,
+    FIELD_SETTINGS,
+    MIDDLE_TACTICS,
+    CAPTAINCY_TACTICS,
     generatePlayers,
     roundPrice,
   } = window.CricketManagerData;
@@ -98,6 +101,7 @@
     nominationReason: document.getElementById("nominationReason"),
     auctionLog: document.getElementById("auctionLog"),
     rivalBoard: document.getElementById("rivalBoard"),
+    scoutRivalBtn: document.getElementById("scoutRivalBtn"),
     userFranchiseName: document.getElementById("userFranchiseName"),
     userStrategy: document.getElementById("userStrategy"),
     userPurse: document.getElementById("userPurse"),
@@ -141,7 +145,10 @@
     tacticsPitchHint: document.getElementById("tacticsPitchHint"),
     battingTacticOpts: document.getElementById("battingTacticOpts"),
     powerplayTacticOpts: document.getElementById("powerplayTacticOpts"),
+    middleTacticOpts: document.getElementById("middleTacticOpts"),
     deathTacticOpts: document.getElementById("deathTacticOpts"),
+    fieldTacticOpts: document.getElementById("fieldTacticOpts"),
+    captaincyTacticOpts: document.getElementById("captaincyTacticOpts"),
     tacticAdvisor: document.getElementById("tacticAdvisor"),
     tacticsForm: document.getElementById("tacticsForm"),
     autoTacticsBtn: document.getElementById("autoTacticsBtn"),
@@ -170,6 +177,22 @@
     // Season awards
     seasonAwardsModal: document.getElementById("seasonAwardsModal"),
     seasonAwardsContent: document.getElementById("seasonAwardsContent"),
+    // Stats database
+    statsSection: document.getElementById("statsSection"),
+    statsSearch: document.getElementById("statsSearch"),
+    statsTeamFilter: document.getElementById("statsTeamFilter"),
+    statsRoleFilter: document.getElementById("statsRoleFilter"),
+    statsTableWrap: document.getElementById("statsTableWrap"),
+    statsBattingTab: document.getElementById("statsBattingTab"),
+    statsBowlingTab: document.getElementById("statsBowlingTab"),
+    // Scenario mode
+    scenarioOpponent: document.getElementById("scenarioOpponent"),
+    scenarioPitch: document.getElementById("scenarioPitch"),
+    scenarioRunsNeeded: document.getElementById("scenarioRunsNeeded"),
+    scenarioOversLeft: document.getElementById("scenarioOversLeft"),
+    scenarioWktsInHand: document.getElementById("scenarioWktsInHand"),
+    runScenarioBtn: document.getElementById("runScenarioBtn"),
+    scenarioOutput: document.getElementById("scenarioOutput"),
   };
 
   let state = null;
@@ -217,6 +240,7 @@
       showSetup();
     }
 
+    initStatsListeners();
     render();
     startTicker();
   }
@@ -403,6 +427,14 @@
       simulateSeason();
     });
 
+    refs.scoutRivalBtn?.addEventListener("click", () => {
+      triggerRivalScout();
+    });
+
+    refs.runScenarioBtn?.addEventListener("click", () => {
+      runScenarioMode();
+    });
+
     refs.closeLiveMatchBtn.addEventListener("click", () => {
       hideLiveMatchModal();
     });
@@ -476,12 +508,18 @@
         ...franchise,
         purse: SETTINGS.initialPurse,
         squad: [],
+        contracts: {},
         spent: 0,
       })),
       logs: [],
       seasonNumber: 1,
       seasonHistory: [],
       seasonStats: {}, // { [playerId]: { pomAwards, runs, wickets, matches } }
+      auctionIntel: {
+        scoutedTeamId: null,
+        revealUntilLot: 0,
+        scansUsed: 0,
+      },
       auction: {
         status: "running",
         lotNumber: 0,
@@ -566,6 +604,13 @@
       seasonNumber: payload.seasonNumber ?? 1,
       seasonHistory: Array.isArray(payload.seasonHistory) ? payload.seasonHistory : [],
       seasonStats: payload.seasonStats && typeof payload.seasonStats === "object" ? payload.seasonStats : {},
+      auctionIntel: payload.auctionIntel && typeof payload.auctionIntel === "object"
+        ? {
+            scoutedTeamId: payload.auctionIntel.scoutedTeamId || null,
+            revealUntilLot: Number(payload.auctionIntel.revealUntilLot) || 0,
+            scansUsed: Number(payload.auctionIntel.scansUsed) || 0,
+          }
+        : { scoutedTeamId: null, revealUntilLot: 0, scansUsed: 0 },
       logs: Array.isArray(payload.logs) ? payload.logs : [],
       auction: {
         ...payload.auction,
@@ -586,6 +631,18 @@
         playoff: payload.season.playoff || createSeasonState().playoff,
       },
     };
+
+    state.franchises = state.franchises.map((team) => ({
+      ...team,
+      contracts: team.contracts && typeof team.contracts === "object" ? team.contracts : {},
+    }));
+    state.franchises.forEach((team) => {
+      team.squad.forEach((playerId) => {
+        if (!Number.isFinite(team.contracts[playerId])) {
+          team.contracts[playerId] = 1;
+        }
+      });
+    });
 
     if (state.auction.currentLot) {
       const speed = getSpeed();
@@ -1280,27 +1337,41 @@
   }
 
   /**
-   * Builds the IPL-style strategic auction order from the player pool.
-   *
-   * Ordering rules (mirrors real IPL auction structure):
-   *   1. Base price tier — highest base price lots come first (₹2cr before ₹0.5cr)
-   *   2. Role within tier — WK → BAT → AR → BWL (keepers first, rare positions early)
-   *   3. Market value within role — most valuable player opens each role group
-   *
-   * This ensures marquee / high-value players go early so every franchise must
-   * make budget decisions before the cheaper depth pools open.
+   * IPL-style tiered auction sets with randomization within each tier.
+   * Set 1: Marquee players (tagged "marquee") — the headline lots
+   * Set 2: Capped Stars (base price >= 1.5 cr) — premium internationals
+   * Set 3: Capped Players (base price >= 0.75 cr) — experienced squad builders
+   * Set 4: Uncapped / Youth (base price < 0.75 cr) — emerging talent pool
+   * Within each set, order is randomized so every auction plays out differently.
    */
   function generateAuctionQueue(players) {
-    const rolePriority = { WK: 0, BAT: 1, AR: 2, BWL: 3 };
-    return [...players]
-      .sort((a, b) => {
-        if (b.basePrice !== a.basePrice) return b.basePrice - a.basePrice;
-        if (rolePriority[a.role] !== rolePriority[b.role]) {
-          return rolePriority[a.role] - rolePriority[b.role];
-        }
-        return b.marketValue - a.marketValue;
-      })
-      .map((p) => p.id);
+    const marquee = [];
+    const stars = [];
+    const capped = [];
+    const uncapped = [];
+
+    for (const p of players) {
+      if (hasTag(p, "marquee")) marquee.push(p);
+      else if (p.basePrice >= 1.5) stars.push(p);
+      else if (p.basePrice >= 0.75) capped.push(p);
+      else uncapped.push(p);
+    }
+
+    // Fisher-Yates shuffle using the seeded RNG
+    function shuffle(arr) {
+      for (let i = arr.length - 1; i > 0; i--) {
+        const j = Math.floor(nextRandom() * (i + 1));
+        [arr[i], arr[j]] = [arr[j], arr[i]];
+      }
+      return arr;
+    }
+
+    return [
+      ...shuffle(marquee),
+      ...shuffle(stars),
+      ...shuffle(capped),
+      ...shuffle(uncapped),
+    ].map((p) => p.id);
   }
 
   /**
@@ -1449,6 +1520,7 @@
       buyer.purse = roundPrice(buyer.purse - lot.currentBid);
       buyer.spent = roundPrice(buyer.spent + lot.currentBid);
       buyer.squad.push(player.id);
+      buyer.contracts[player.id] = assignContractYears(player);
       state.auction.soldLots.push({
         lot: state.auction.lotNumber,
         playerId: player.id,
@@ -1521,6 +1593,7 @@
         const cost = roundPrice(Math.min(pick.basePrice, Math.max(0, team.purse)));
         pick.status = "sold";
         team.squad.push(pick.id);
+        team.contracts[pick.id] = assignContractYears(pick, true);
         team.purse = roundPrice(team.purse - cost);
         team.spent = roundPrice(team.spent + cost);
         state.auction.soldLots.push({
@@ -1953,6 +2026,32 @@
     requestAnimationFrame(processBatch);
   }
 
+  function buildMatchEntry(fixture, result) {
+    return {
+      fixtureId: fixture.id,
+      phase: fixture.phase,
+      round: fixture.round,
+      summary: result.summary,
+      winnerId: result.winnerId,
+      homeId: fixture.homeId,
+      awayId: fixture.awayId,
+      homeScore: result.homeScore,
+      awayScore: result.awayScore,
+      margin: result.margin,
+      playerOfMatch: result.playerOfMatch,
+      pitchLabel: result.pitch?.label ?? "",
+      pitchId: result.pitch?.id ?? "",
+      tacticChips: result.tacticChips ?? [],
+      innings1TopScorer: result.innings1?.topScorer ?? null,
+      innings2TopScorer: result.innings2?.topScorer ?? null,
+      innings1TopWickets: result.innings1?.topWicketTaker ?? null,
+      innings2TopWickets: result.innings2?.topWicketTaker ?? null,
+      innings1Scorecard: result.innings1?.scorecard ?? null,
+      innings2Scorecard: result.innings2?.scorecard ?? null,
+      firstBattingId: result.firstBattingId,
+    };
+  }
+
   function playOneFixture(userTactics = null) {
     if (!state || state.season.status === "locked" || state.season.status === "complete") {
       return false;
@@ -1982,26 +2081,7 @@
     }
     fixture.played = true;
     fixture.result = result;
-    state.season.recentMatches.unshift({
-      fixtureId: fixture.id,
-      phase: fixture.phase,
-      round: fixture.round,
-      summary: result.summary,
-      winnerId: result.winnerId,
-      homeId: fixture.homeId,
-      awayId: fixture.awayId,
-      homeScore: result.homeScore,
-      awayScore: result.awayScore,
-      margin: result.margin,
-      playerOfMatch: result.playerOfMatch,
-      pitchLabel: result.pitch?.label ?? "",
-      pitchId: result.pitch?.id ?? "",
-      tacticChips: result.tacticChips ?? [],
-      innings1TopScorer: result.innings1?.topScorer ?? null,
-      innings2TopScorer: result.innings2?.topScorer ?? null,
-      innings1TopWickets: result.innings1?.topWicketTaker ?? null,
-      innings2TopWickets: result.innings2?.topWicketTaker ?? null,
-    });
+    state.season.recentMatches.unshift(buildMatchEntry(fixture, result));
     state.season.recentMatches = state.season.recentMatches.slice(0, 12);
 
     trackMatchStats(result);
@@ -2024,12 +2104,30 @@
 
   function ensureSeasonStat(playerId) {
     if (!state.seasonStats[playerId]) {
-      state.seasonStats[playerId] = { pomAwards: 0, runs: 0, wickets: 0, matches: 0 };
+      state.seasonStats[playerId] = {
+        pomAwards: 0, matches: 0,
+        // Batting
+        innings: 0, notOuts: 0, runs: 0, ballsFaced: 0, fours: 0, sixes: 0,
+        highScore: 0, highScoreNotOut: false, fifties: 0, hundreds: 0,
+        // Bowling
+        oversBowled: 0, runsConceded: 0, wickets: 0, dots: 0,
+        bestBowlingWickets: 0, bestBowlingRuns: 999,
+        // Fielding
+        catches: 0,
+      };
+    }
+    // Migrate old saves that only had the simple structure
+    const s = state.seasonStats[playerId];
+    if (s.innings === undefined) {
+      s.innings = 0; s.notOuts = 0; s.ballsFaced = 0; s.fours = 0; s.sixes = 0;
+      s.highScore = 0; s.highScoreNotOut = false; s.fifties = 0; s.hundreds = 0;
+      s.oversBowled = 0; s.runsConceded = 0; s.dots = 0;
+      s.bestBowlingWickets = 0; s.bestBowlingRuns = 999; s.catches = 0;
     }
   }
 
   function trackMatchStats(result) {
-    // POM — use ID if available (new results), fall back to name for old saved matches
+    // POM
     const pomPlayer = result.playerOfMatchId
       ? state.players.find((p) => p.id === result.playerOfMatchId)
       : state.players.find((p) => p.name === result.playerOfMatch);
@@ -2037,16 +2135,72 @@
       ensureSeasonStat(pomPlayer.id);
       state.seasonStats[pomPlayer.id].pomAwards += 1;
     }
-    // Orange Cap (runs) and Purple Cap (wickets) from both innings
+
+    // Track detailed stats from scorecards for both innings
     [result.innings1, result.innings2].forEach((inn) => {
-      if (inn?.topScorerData) {
-        ensureSeasonStat(inn.topScorerData.id);
-        state.seasonStats[inn.topScorerData.id].runs += inn.topScorerData.runs;
-        state.seasonStats[inn.topScorerData.id].matches += 1;
+      if (!inn?.scorecard) {
+        // Fallback for old results without scorecards
+        if (inn?.topScorerData) {
+          ensureSeasonStat(inn.topScorerData.id);
+          state.seasonStats[inn.topScorerData.id].runs += inn.topScorerData.runs;
+          state.seasonStats[inn.topScorerData.id].matches += 1;
+        }
+        if (inn?.topWicketTakerData) {
+          ensureSeasonStat(inn.topWicketTakerData.id);
+          state.seasonStats[inn.topWicketTakerData.id].wickets += inn.topWicketTakerData.wickets;
+        }
+        return;
       }
-      if (inn?.topWicketTakerData) {
-        ensureSeasonStat(inn.topWicketTakerData.id);
-        state.seasonStats[inn.topWicketTakerData.id].wickets += inn.topWicketTakerData.wickets;
+
+      const sc = inn.scorecard;
+      const matchedIds = new Set();
+
+      // Batting stats from scorecard
+      for (const b of sc.battingCard) {
+        ensureSeasonStat(b.id);
+        const s = state.seasonStats[b.id];
+        if (!matchedIds.has(b.id)) { s.matches += 1; matchedIds.add(b.id); }
+        s.innings += 1;
+        s.runs += b.runs;
+        s.ballsFaced += b.balls;
+        s.fours += b.fours;
+        s.sixes += b.sixes;
+        if (b.notOut) s.notOuts += 1;
+        if (b.runs > s.highScore || (b.runs === s.highScore && b.notOut && !s.highScoreNotOut)) {
+          s.highScore = b.runs;
+          s.highScoreNotOut = b.notOut;
+        }
+        if (b.runs >= 100) s.hundreds += 1;
+        else if (b.runs >= 50) s.fifties += 1;
+      }
+
+      // Bowling stats from scorecard
+      for (const bw of sc.bowlingCard) {
+        ensureSeasonStat(bw.id);
+        const s = state.seasonStats[bw.id];
+        if (!matchedIds.has(bw.id)) { s.matches += 1; matchedIds.add(bw.id); }
+        s.oversBowled += bw.overs;
+        s.runsConceded += bw.runsConceded;
+        s.wickets += bw.wickets;
+        s.dots += bw.dots;
+        // Best bowling figures
+        if (bw.wickets > s.bestBowlingWickets ||
+            (bw.wickets === s.bestBowlingWickets && bw.runsConceded < s.bestBowlingRuns)) {
+          s.bestBowlingWickets = bw.wickets;
+          s.bestBowlingRuns = bw.runsConceded;
+        }
+      }
+
+      // Generate some catches from fielding (proportional to wickets, minus bowled/lbw)
+      const totalWkts = inn.wickets;
+      const catches = Math.max(0, totalWkts - Math.floor(nextRandom() * 3));
+      if (catches > 0 && sc.bowlingCard.length > 0) {
+        // Distribute catches to fielders (batting side of the other team bowled)
+        for (let c = 0; c < catches; c++) {
+          const fielder = sc.bowlingCard[Math.floor(nextRandom() * sc.bowlingCard.length)];
+          ensureSeasonStat(fielder.id);
+          state.seasonStats[fielder.id].catches += 1;
+        }
       }
     });
   }
@@ -2091,6 +2245,9 @@
     const tacticResult  = (userTactics && userInvolved)
       ? scoreTacticsForPitch(userTactics, pitch, userTeamId === firstBattingTeam.id ? firstLineup : secondLineup)
       : null;
+    const captaincyPlan = userTactics?.captaincy
+      ? CAPTAINCY_TACTICS.find((c) => c.id === userTactics.captaincy)
+      : null;
 
     const userIsBatting1 = firstBattingTeam.id  === userTeamId;
     const userIsBatting2 = secondBattingTeam.id === userTeamId;
@@ -2115,6 +2272,20 @@
     const secondInnings = simulateInningsPhased(
       secondBattingTeam.id, secondStrength, firstStrength, true, firstInnings.score + 1, pitch, inn2BatMod, fixture.homeId
     );
+
+    if (captaincyPlan && userInvolved) {
+      const userChasing = userTeamId === secondBattingTeam.id;
+      if (userChasing) {
+        const adjustment = Math.round((captaincyPlan.chaseBonus ?? 0) * 12);
+        secondInnings.score = Math.round(clamp(secondInnings.score + adjustment, 80, 260));
+      }
+    }
+
+    // Generate per-player scorecards for both innings
+    const scorecard1 = generateScorecard(firstInnings.score, firstInnings.wickets, firstLineup, secondLineup);
+    const scorecard2 = generateScorecard(secondInnings.score, secondInnings.wickets, secondLineup, firstLineup);
+    firstInnings.scorecard = scorecard1;
+    secondInnings.scorecard = scorecard2;
 
     const homeScore    = firstBattingTeam.id === homeTeam.id ? firstInnings.score   : secondInnings.score;
     const awayScore    = firstBattingTeam.id === awayTeam.id ? firstInnings.score   : secondInnings.score;
@@ -2364,6 +2535,19 @@
       else if (fit <= -1)              chips.push({ label: `${pp.label} backfired ✗`, type: "loss" });
     }
 
+    // Middle overs plan
+    const mid = MIDDLE_TACTICS.find((t) => t.id === tactics.middle);
+    if (mid) {
+      const fit = mid.pitchFit[pitch.id] ?? 0;
+      const hasSpin = lineup.some((p) => hasTag(p, "spin") || hasTag(p, "mystery"));
+      const execBonus = tactics.middle === "spin_web" && hasSpin ? 1.3 : 0.7;
+      bowlingMod += fit * 6 * execBonus;
+      if (fit >= 0.5 && execBonus > 0.9) chips.push({ label: `${mid.label} worked ✓`, type: "win" });
+      else if (tactics.middle === "spin_web" && !hasSpin)
+        chips.push({ label: "No spinners for spin web ✗", type: "loss" });
+      else if (fit <= -0.5) chips.push({ label: `${mid.label} ineffective ✗`, type: "loss" });
+    }
+
     // Death bowling
     const death = DEATH_TACTICS.find((t) => t.id === tactics.death);
     if (death) {
@@ -2374,6 +2558,26 @@
       if (fit >= 0.5 && execBonus > 0.9) chips.push({ label: `${death.label} correct ✓`, type: "win" });
       else if (tactics.death === "specialist" && !hasDeathSpec)
         chips.push({ label: "No death specialist in XI ✗", type: "loss" });
+    }
+
+    // Field setting
+    const field = FIELD_SETTINGS.find((t) => t.id === tactics.field);
+    if (field) {
+      const fit = field.pitchFit[pitch.id] ?? 0;
+      battingMod += (field.battingEffect ?? 0) * 50;
+      bowlingMod += (field.bowlingEffect ?? 0) * 50 + fit * 4;
+      if (fit >= 0.5) chips.push({ label: `${field.label} suits pitch ✓`, type: "win" });
+      else if (fit <= -0.5) chips.push({ label: `${field.label} wrong for pitch ✗`, type: "loss" });
+    }
+
+    // Captaincy style
+    const cap = CAPTAINCY_TACTICS.find((t) => t.id === tactics.captaincy);
+    if (cap) {
+      const fit = cap.pitchFit[pitch.id] ?? 0;
+      battingMod += (cap.battingEffect ?? 0) * 55 + fit * 3;
+      bowlingMod += (cap.bowlingEffect ?? 0) * 45 + fit * 2;
+      if (fit >= 0.5) chips.push({ label: `${cap.label} read the game ✓`, type: "win" });
+      else if (fit <= -0.5) chips.push({ label: `${cap.label} got exposed ✗`, type: "loss" });
     }
 
     return { battingMod, bowlingMod, chips };
@@ -2471,6 +2675,112 @@
       topScorerData:      topBatterEntry ? { id: topBatterEntry.p.id, name: topBatterEntry.p.name, runs: simRuns } : null,
       topWicketTakerData: topBowlerEntry ? { id: topBowlerEntry.p.id, name: topBowlerEntry.p.name, wickets: simWickets } : null,
     };
+  }
+
+  /**
+   * Generate per-player scorecard from aggregate innings totals.
+   * Distributes runs/wickets across the lineup based on ratings + randomness.
+   */
+  function generateScorecard(totalScore, totalWickets, battingLineup, bowlingLineup) {
+    // ── BATTING CARD ──
+    // Sort lineup by batting position: WK/BAT first, then AR, then BWL
+    const posOrder = { WK: 0, BAT: 1, AR: 2, BWL: 3 };
+    const batOrder = [...battingLineup].sort((a, b) => (posOrder[a.role] ?? 3) - (posOrder[b.role] ?? 3));
+
+    // Compute raw weights for run distribution
+    const rawWeights = batOrder.map((p, i) => {
+      const posBonus = i < 3 ? 1.5 : i < 6 ? 1.0 : 0.4;
+      const ratingW = (p.batting / 100) * 0.7 + 0.3;
+      return posBonus * ratingW * (0.6 + nextRandom() * 0.8);
+    });
+    const weightSum = rawWeights.reduce((s, w) => s + w, 0) || 1;
+
+    // Decide who got out (pick totalWickets batters, biased toward lower order)
+    const dismissalChance = batOrder.map((p, i) => {
+      const posRisk = i < 3 ? 0.5 : i < 6 ? 0.7 : 1.0;
+      return posRisk * (1 - p.temperament / 200) * (0.5 + nextRandom() * 1.0);
+    });
+    const sortedByRisk = batOrder.map((p, i) => ({ idx: i, risk: dismissalChance[i] }))
+      .sort((a, b) => b.risk - a.risk);
+    const dismissedIndices = new Set(sortedByRisk.slice(0, Math.min(totalWickets, batOrder.length - 1)).map((d) => d.idx));
+
+    let runsLeft = totalScore;
+    const battingCard = batOrder.map((p, i) => {
+      const isLast = i === batOrder.length - 1;
+      let runs = isLast ? runsLeft : Math.round(totalScore * rawWeights[i] / weightSum);
+      runs = clamp(runs, dismissedIndices.has(i) ? 0 : 0, runsLeft);
+      runsLeft -= runs;
+      const sr = p.role === "BWL" ? 100 + nextRandom() * 40 : 120 + nextRandom() * 50 + (hasTag(p, "powerplay") ? 15 : 0);
+      const balls = runs > 0 ? Math.max(1, Math.round(runs / sr * 100)) : dismissedIndices.has(i) ? Math.max(1, Math.round(nextRandom() * 6)) : 0;
+      const sixes = runs >= 12 ? Math.floor(nextRandom() * Math.min(6, runs / 12)) : 0;
+      const fours = runs >= 4 ? Math.floor(nextRandom() * Math.min(8, (runs - sixes * 6) / 4)) : 0;
+      return {
+        id: p.id, name: p.name, role: p.role,
+        runs, balls, fours, sixes,
+        notOut: !dismissedIndices.has(i) && (runs > 0 || balls > 0),
+        sr: balls > 0 ? Math.round(runs / balls * 100) : 0,
+      };
+    }).filter((b) => b.runs > 0 || b.balls > 0);
+
+    // ── BOWLING CARD ──
+    const bowlers = bowlingLineup.filter((p) => p.role === "BWL" || p.role === "AR")
+      .sort((a, b) => b.bowling - a.bowling)
+      .slice(0, 6);
+    // If not enough bowlers, add highest-bowling BAT/WK
+    if (bowlers.length < 5) {
+      const extras = bowlingLineup.filter((p) => !bowlers.some((b) => b.id === p.id))
+        .sort((a, b) => b.bowling - a.bowling);
+      while (bowlers.length < 5 && extras.length) bowlers.push(extras.shift());
+    }
+
+    // Distribute 20 overs across bowlers (max 4 per bowler in T20)
+    const bowlerOvers = bowlers.map((p, i) => {
+      const base = i < 4 ? 4 : bowlers.length > 5 ? 2 : 3;
+      return { p, overs: base };
+    });
+    // Adjust to sum to 20
+    let oversTotal = bowlerOvers.reduce((s, b) => s + b.overs, 0);
+    while (oversTotal > 20 && bowlerOvers.length) {
+      const idx = bowlerOvers.length - 1;
+      bowlerOvers[idx].overs = Math.max(1, bowlerOvers[idx].overs - 1);
+      oversTotal = bowlerOvers.reduce((s, b) => s + b.overs, 0);
+    }
+    while (oversTotal < 20) {
+      for (const b of bowlerOvers) {
+        if (b.overs < 4 && oversTotal < 20) { b.overs++; oversTotal++; }
+      }
+    }
+
+    // Distribute runs conceded (inversely proportional to bowling rating)
+    const bowlWeights = bowlerOvers.map((b) => {
+      const weakness = 1 - b.p.bowling / 120;
+      return b.overs * (0.6 + weakness + nextRandom() * 0.5);
+    });
+    const bowlWeightSum = bowlWeights.reduce((s, w) => s + w, 0) || 1;
+    let runsToDistribute = totalScore;
+
+    // Distribute wickets proportional to bowling rating
+    const wktWeights = bowlerOvers.map((b) => (b.p.bowling / 100) * (0.5 + nextRandom() * 1.0));
+    const wktWeightSum = wktWeights.reduce((s, w) => s + w, 0) || 1;
+    let wicketsLeft = totalWickets;
+
+    const bowlingCard = bowlerOvers.map((b, i) => {
+      const isLast = i === bowlerOvers.length - 1;
+      let rc = isLast ? runsToDistribute : Math.round(totalScore * bowlWeights[i] / bowlWeightSum);
+      rc = clamp(rc, b.overs * 3, Math.min(runsToDistribute, b.overs * 18));
+      runsToDistribute -= rc;
+      let wkts = isLast ? wicketsLeft : Math.round(totalWickets * wktWeights[i] / wktWeightSum);
+      wkts = clamp(wkts, 0, Math.min(wicketsLeft, 4));
+      wicketsLeft -= wkts;
+      const econ = b.overs > 0 ? Math.round(rc / b.overs * 100) / 100 : 0;
+      return {
+        id: b.p.id, name: b.p.name, role: b.p.role,
+        overs: b.overs, runsConceded: rc, wickets: wkts,
+        economy: econ, dots: Math.max(0, Math.round(b.overs * 6 * (0.3 + b.p.bowling / 300))),
+      };
+    });
+
+    return { battingCard, bowlingCard };
   }
 
   function pickPlayerOfMatch(lineup, _strength) {
@@ -2773,6 +3083,44 @@
     });
   }
 
+  function assignContractYears(player, budgetSigning = false) {
+    if (hasTag(player, "marquee")) return nextRandom() < 0.55 ? 1 : 2;
+    if (budgetSigning) return 1;
+    if (player.age <= 24 || hasTag(player, "young")) return nextRandom() < 0.5 ? 3 : 2;
+    return nextRandom() < 0.35 ? 1 : nextRandom() < 0.75 ? 2 : 3;
+  }
+
+  function triggerRivalScout() {
+    if (!state || state.auction.status === "complete") return;
+    const user = getUserTeam();
+    if (!user || user.purse < 0.2) {
+      addLog("Not enough purse for a scouting report (0.20 cr).", "danger");
+      return;
+    }
+    const lot = getCurrentLot();
+    const rivals = state.franchises.filter((f) => f.id !== state.userFranchiseId && getSlotsLeft(f) > 0);
+    if (!rivals.length) return;
+    const target = rivals[Math.floor(nextRandom() * rivals.length)];
+    user.purse = roundPrice(user.purse - 0.2);
+    user.spent = roundPrice((user.spent || 0) + 0.2);
+    state.auctionIntel.scoutedTeamId = target.id;
+    state.auctionIntel.revealUntilLot = (state.auction.lotNumber || 0) + 8;
+    state.auctionIntel.scansUsed = (state.auctionIntel.scansUsed || 0) + 1;
+    addLog(
+      `Scouting intel: ${target.short} is revealed for the next 8 lots${lot ? ` (through lot ${state.auctionIntel.revealUntilLot})` : ""}.`,
+      "positive"
+    );
+    render();
+    persistState();
+  }
+
+  function formatNeedBand(value) {
+    if (value >= 4.5) return "Very High";
+    if (value >= 3) return "High";
+    if (value >= 1.8) return "Medium";
+    return "Low";
+  }
+
   // ── Tactics Modal ──────────────────────────────────────────────────────────
 
   function showTacticsModal(fixture, onConfirm) {
@@ -2806,13 +3154,26 @@
     // Smart defaults: pick the best-fit tactic for each group
     const bestBat  = BATTING_TACTICS.reduce((b, t) => (t.pitchFit[pitch.id] ?? 0) > (b.pitchFit[pitch.id] ?? 0) ? t : b);
     const bestPP   = POWERPLAY_TACTICS.reduce((b, t) => (t.pitchFit[pitch.id] ?? 0) > (b.pitchFit[pitch.id] ?? 0) ? t : b);
+    const bestMid  = MIDDLE_TACTICS.reduce((b, t) => (t.pitchFit[pitch.id] ?? 0) > (b.pitchFit[pitch.id] ?? 0) ? t : b);
     const bestDth  = DEATH_TACTICS.reduce((b, t) => (t.pitchFit[pitch.id] ?? 0) > (b.pitchFit[pitch.id] ?? 0) ? t : b);
+    const bestFld  = FIELD_SETTINGS.reduce((b, t) => (t.pitchFit[pitch.id] ?? 0) > (b.pitchFit[pitch.id] ?? 0) ? t : b);
+    const bestCap  = CAPTAINCY_TACTICS.reduce((b, t) => (t.pitchFit[pitch.id] ?? 0) > (b.pitchFit[pitch.id] ?? 0) ? t : b);
 
     buildGroup(refs.battingTacticOpts,   BATTING_TACTICS,   "batting",   bestBat.id);
     buildGroup(refs.powerplayTacticOpts, POWERPLAY_TACTICS, "powerplay", bestPP.id);
+    buildGroup(refs.middleTacticOpts,    MIDDLE_TACTICS,    "middle",    bestMid.id);
     buildGroup(refs.deathTacticOpts,     DEATH_TACTICS,     "death",     bestDth.id);
+    buildGroup(refs.fieldTacticOpts,     FIELD_SETTINGS,    "field",     bestFld.id);
+    buildGroup(refs.captaincyTacticOpts, CAPTAINCY_TACTICS, "captaincy", bestCap.id);
 
-    pendingTactics = { batting: bestBat.id, powerplay: bestPP.id, death: bestDth.id };
+    pendingTactics = {
+      batting: bestBat.id,
+      powerplay: bestPP.id,
+      middle: bestMid.id,
+      death: bestDth.id,
+      field: bestFld.id,
+      captaincy: bestCap.id,
+    };
     updateTacticAdvisor(pitch);
 
     refs.tacticsModal.classList.add("visible");
@@ -2840,7 +3201,14 @@
     // Auto-select
     refs.autoTacticsBtn.onclick = () => {
       hideTacticsModal();
-      onConfirm({ batting: bestBat.id, powerplay: bestPP.id, death: bestDth.id });
+      onConfirm({
+        batting: bestBat.id,
+        powerplay: bestPP.id,
+        middle: bestMid.id,
+        death: bestDth.id,
+        field: bestFld.id,
+        captaincy: bestCap.id,
+      });
     };
   }
 
@@ -2848,17 +3216,20 @@
     if (!pendingTactics) return;
     const bat  = BATTING_TACTICS.find((t) => t.id === pendingTactics.batting);
     const pp   = POWERPLAY_TACTICS.find((t) => t.id === pendingTactics.powerplay);
+    const mid  = MIDDLE_TACTICS.find((t) => t.id === pendingTactics.middle);
     const dth  = DEATH_TACTICS.find((t) => t.id === pendingTactics.death);
-    const batFit = bat?.pitchFit[pitch.id] ?? 0;
-    const ppFit  = pp?.pitchFit[pitch.id]  ?? 0;
-    const dthFit = dth?.pitchFit[pitch.id] ?? 0;
-    const total  = batFit + ppFit + dthFit;
-    const advice = total >= 2   ? "Excellent plan — tactics align perfectly with conditions."
-                 : total >= 0.5 ? "Decent setup. One or two calls might be off."
-                 : total < -1   ? "Risky plan — conditions are working against you."
-                 : "Mixed alignment. The pitch will decide.";
+    const fld  = FIELD_SETTINGS.find((t) => t.id === pendingTactics.field);
+    const cap  = CAPTAINCY_TACTICS.find((t) => t.id === pendingTactics.captaincy);
+    const total = (bat?.pitchFit[pitch.id] ?? 0) + (pp?.pitchFit[pitch.id] ?? 0) +
+                  (mid?.pitchFit[pitch.id] ?? 0) + (dth?.pitchFit[pitch.id] ?? 0) +
+                  (fld?.pitchFit[pitch.id] ?? 0) + (cap?.pitchFit[pitch.id] ?? 0);
+    const advice = total >= 3   ? "Masterclass setup — every tactic nails the conditions."
+                 : total >= 1.5 ? "Strong plan — most tactics fit the pitch well."
+                 : total >= 0   ? "Decent setup. A few calls might be off."
+                 : total > -2   ? "Mixed alignment. The pitch will test your choices."
+                 : "Risky plan — conditions are working against you.";
     refs.tacticAdvisor.textContent = advice;
-    refs.tacticAdvisor.style.color = total >= 2 ? "var(--positive)" : total < -1 ? "var(--danger)" : "";
+    refs.tacticAdvisor.style.color = total >= 3 ? "var(--positive)" : total < -2 ? "var(--danger)" : "";
   }
 
   function hideTacticsModal() {
@@ -3096,26 +3467,7 @@
     fixture.played = true;
     fixture.result = result;
 
-    state.season.recentMatches.unshift({
-      fixtureId: fixture.id,
-      phase: fixture.phase,
-      round: fixture.round,
-      summary: result.summary,
-      winnerId: result.winnerId,
-      homeId: fixture.homeId,
-      awayId: fixture.awayId,
-      homeScore: result.homeScore,
-      awayScore: result.awayScore,
-      margin: result.margin,
-      playerOfMatch: result.playerOfMatch,
-      pitchLabel: result.pitch?.label ?? "",
-      pitchId: result.pitch?.id ?? "",
-      tacticChips: result.tacticChips ?? [],
-      innings1TopScorer: result.innings1?.topScorer ?? null,
-      innings2TopScorer: result.innings2?.topScorer ?? null,
-      innings1TopWickets: result.innings1?.topWicketTaker ?? null,
-      innings2TopWickets: result.innings2?.topWicketTaker ?? null,
-    });
+    state.season.recentMatches.unshift(buildMatchEntry(fixture, result));
     state.season.recentMatches = state.season.recentMatches.slice(0, 12);
 
     trackMatchStats(result);
@@ -3160,6 +3512,7 @@
   }
 
   function showSeasonAwards() {
+    refs.seasonAwardsContent.classList.remove("scorecard-panel");
     const champ = state.season.championId ? getTeamById(state.season.championId) : null;
     const caps = getCapLeaders();
     const seasonNum = state.seasonNumber ?? 1;
@@ -3217,7 +3570,7 @@
       <p class="awards-user-summary${userWon ? " champion-text" : ""}">${userSummary}</p>
       <div class="awards-grid">${awardsHTML}</div>
       <div class="awards-actions">
-        <button id="newSeasonBtn" class="button button-primary">Start Next Season</button>
+        <button id="newSeasonBtn" class="button button-primary">Retention & Next Season</button>
         <button id="dismissAwardsBtn" class="button button-secondary">Close</button>
       </div>
     `;
@@ -3230,15 +3583,77 @@
       refs.seasonAwardsModal.setAttribute("aria-hidden", "true");
     }, { once: true });
     document.getElementById("newSeasonBtn").addEventListener("click", () => {
-      refs.seasonAwardsModal.classList.remove("visible");
-      refs.seasonAwardsModal.setAttribute("aria-hidden", "true");
-      startNewSeason();
+      openRetentionCenter();
     }, { once: true });
   }
 
   // ── Multi-Season Support ────────────────────────────────────────────────────
 
-  function startNewSeason() {
+  function getRetentionCost(player) {
+    return roundPrice(Math.max(player.basePrice, player.marketValue * 0.55));
+  }
+
+  function getExpiringPlayers(team) {
+    return team.squad
+      .map((id) => {
+        const player = getPlayerById(id);
+        const years = team.contracts?.[id] ?? 1;
+        return player ? { player, years } : null;
+      })
+      .filter(Boolean)
+      .filter((entry) => entry.years <= 1);
+  }
+
+  function openRetentionCenter() {
+    if (!state || state.season.status !== "complete") return;
+    refs.seasonAwardsContent.classList.remove("scorecard-panel");
+    const userTeam = getUserTeam();
+    const userExpiring = getExpiringPlayers(userTeam);
+    const maxRetentions = 3;
+
+    if (!userExpiring.length) {
+      startNewSeason([]);
+      return;
+    }
+
+    const rows = userExpiring.map(({ player }) => {
+      const cost = getRetentionCost(player);
+      return `<label class="retention-row">
+        <input type="checkbox" class="retention-check" value="${player.id}" />
+        <span>${player.name} · ${formatRole(player.role)}</span>
+        <strong>${formatCrore(cost)}</strong>
+      </label>`;
+    }).join("");
+
+    refs.seasonAwardsContent.innerHTML = `
+      <h2 class="awards-title">Retention Center</h2>
+      <p class="awards-user-summary">Choose up to ${maxRetentions} expiring players to retain for 2 years.</p>
+      <div class="retention-list">${rows}</div>
+      <div class="awards-actions">
+        <button id="confirmRetentionBtn" class="button button-primary">Confirm Retentions</button>
+        <button id="skipRetentionBtn" class="button button-secondary">Skip Retention</button>
+      </div>
+    `;
+    refs.seasonAwardsModal.classList.add("visible");
+    refs.seasonAwardsModal.setAttribute("aria-hidden", "false");
+
+    const checks = () => Array.from(document.querySelectorAll(".retention-check"));
+    document.getElementById("confirmRetentionBtn")?.addEventListener("click", () => {
+      const picked = checks().filter((c) => c.checked).map((c) => c.value).slice(0, maxRetentions);
+      startNewSeason(picked);
+    }, { once: true });
+    document.getElementById("skipRetentionBtn")?.addEventListener("click", () => {
+      startNewSeason([]);
+    }, { once: true });
+    checks().forEach((box) => {
+      box.addEventListener("change", () => {
+        const selected = checks().filter((c) => c.checked);
+        if (selected.length > maxRetentions) box.checked = false;
+      });
+    });
+  }
+
+  function startNewSeason(userRetainIds = []) {
     if (!state || state.season.status !== "complete") return;
 
     const currentSeasonNum = state.seasonNumber ?? 1;
@@ -3252,18 +3667,99 @@
       userPoints: state.season.table[state.userFranchiseId]?.points ?? 0,
     });
 
-    // Retention: each team keeps their squad, reset purse and season state
+    // Reset purse for new-year cap sheet
+    state.franchises.forEach((team) => {
+      team.purse = SETTINGS.initialPurse;
+      team.spent = 0;
+    });
+
+    const releasedIds = [];
+    const userRetainSet = new Set(userRetainIds);
+
+    // Apply contracts, retention, and release lists
+    for (const team of state.franchises) {
+      const isUser = team.id === state.userFranchiseId;
+      const expiring = getExpiringPlayers(team).map((e) => e.player.id);
+      const aiRetainSet = new Set(
+        expiring
+          .map((id) => getPlayerById(id))
+          .filter(Boolean)
+          .sort((a, b) => (b.batting + b.bowling * 0.9 + b.temperament * 0.2) - (a.batting + a.bowling * 0.9 + a.temperament * 0.2))
+          .slice(0, 2)
+          .map((p) => p.id)
+      );
+
+      const newSquad = [];
+      const newContracts = {};
+      for (const playerId of team.squad) {
+        const currentYears = team.contracts?.[playerId] ?? 1;
+        const nextYears = currentYears - 1;
+        const player = getPlayerById(playerId);
+        if (!player) continue;
+        const shouldRetain = nextYears <= 0 && (
+          isUser ? userRetainSet.has(playerId) : aiRetainSet.has(playerId)
+        );
+
+        if (nextYears > 0) {
+          newSquad.push(playerId);
+          newContracts[playerId] = nextYears;
+          continue;
+        }
+        if (shouldRetain) {
+          const retainCost = getRetentionCost(player);
+          if (team.purse >= retainCost) {
+            team.purse = roundPrice(team.purse - retainCost);
+            team.spent = roundPrice(team.spent + retainCost);
+            newSquad.push(playerId);
+            newContracts[playerId] = 2;
+            continue;
+          }
+        }
+        releasedIds.push(playerId);
+      }
+      team.squad = newSquad;
+      team.contracts = newContracts;
+    }
+
+    // Update player statuses after releases
+    const contracted = new Set(state.franchises.flatMap((team) => team.squad));
+    state.players.forEach((p) => {
+      p.status = contracted.has(p.id) ? "sold" : "available";
+    });
+
     state.seasonNumber = currentSeasonNum + 1;
     state.season = createSeasonState();
     state.seasonStats = {};
+    state.auction.status = "running";
+    state.auction.lotNumber = 0;
+    state.auction.currentLot = null;
+    state.auction.queueIndex = 0;
+    state.auction.acceleratedPhase = false;
+    state.auction.proxy = null;
+    state.auction.soldLots = [];
+    state.auction.queue = generateAuctionQueue(state.players.filter((p) => p.status === "available"));
+    state.auctionIntel = { scoutedTeamId: null, revealUntilLot: 0, scansUsed: 0 };
 
-    // Initialize the new season immediately
-    initializeSeason();
+    if (state.auction.queue.length) {
+      startNextLot();
+      addLog(
+        `Season ${state.seasonNumber} offseason opened. ${releasedIds.length} players released to auction after contract expiry.`,
+        "warning"
+      );
+    } else {
+      initializeSeason();
+      addLog(`Season ${state.seasonNumber} begins. No free agents entered offseason auction.`, "positive");
+    }
 
-    addLog(`Season ${state.seasonNumber} begins! All squads retained, new fixtures generated.`, "positive");
+    refs.seasonAwardsModal.classList.remove("visible");
+    refs.seasonAwardsModal.setAttribute("aria-hidden", "true");
     render();
     persistState();
   }
+
+  let statsTab = "batting";
+  let statsSortKey = "runs";
+  let statsSortDir = -1; // -1 = descending
 
   function render() {
     renderTopBar();
@@ -3273,6 +3769,8 @@
     renderUserPanel();
     renderLeaderboard();
     renderSeason();
+    renderScenarioPanel();
+    renderStats();
     renderControls();
     renderClock();
   }
@@ -3412,6 +3910,12 @@
     refs.simNextBtn.disabled = !state || state.season.status === "locked" || state.season.status === "complete";
     refs.simRoundBtn.disabled = !state || state.season.status === "locked" || state.season.status === "complete";
     refs.simSeasonBtn.disabled = !state || state.season.status === "locked" || state.season.status === "complete";
+    if (refs.scoutRivalBtn) {
+      refs.scoutRivalBtn.disabled = !state || state.auction.status !== "running" || (getUserTeam()?.purse ?? 0) < 0.2;
+    }
+    if (refs.runScenarioBtn) {
+      refs.runScenarioBtn.disabled = !state || state.season.status === "locked";
+    }
   }
 
   function renderLog() {
@@ -3434,6 +3938,12 @@
 
   function renderRivals() {
     const entries = getRivalHeatEntries();
+    if (refs.scoutRivalBtn && state?.auctionIntel) {
+      const lotsLeft = Math.max(0, (state.auctionIntel.revealUntilLot || 0) - (state.auction.lotNumber || 0));
+      refs.scoutRivalBtn.textContent = lotsLeft > 0
+        ? `Scout Rival (active ${lotsLeft} lots)`
+        : "Scout Rival (0.20 cr)";
+    }
     if (!entries.length) {
       refs.rivalBoard.innerHTML =
         '<p class="empty-state">Rival pressure appears once the auction starts.</p>';
@@ -3442,9 +3952,16 @@
 
     refs.rivalBoard.innerHTML = entries
       .map((entry) => {
+        const intel = state.auctionIntel || {};
+        const revealActive = state.auction.status === "complete" ||
+          (intel.scoutedTeamId === entry.team.id && (state.auction.lotNumber || 0) <= (intel.revealUntilLot || 0));
+        const fogMeta = revealActive
+          ? `${entry.status} · Need ${entry.pressure.toFixed(1)} · Walk ${formatCrore(entry.valuation)}`
+          : `Intel Fog · Need ${formatNeedBand(entry.pressure)} · Walk ${formatCrore(Math.max(0.2, Math.round(entry.valuation)))}±`;
         const heatColor =
           entry.heat > 7 ? "var(--danger)" : entry.heat > 4 ? "var(--warning)" : "var(--positive)";
-        const heatPct = Math.min(100, (entry.heat / 10) * 100).toFixed(1);
+        const heatShown = revealActive ? entry.heat : clamp(entry.heat * 0.62 + 1.4, 2.4, 7.2);
+        const heatPct = Math.min(100, (heatShown / 10) * 100).toFixed(1);
         const franchise = state.franchises.find((f) => f.id === entry.team.id);
         const badgeColor = franchise?.colors.primary || "#888888";
         return `
@@ -3452,12 +3969,12 @@
             <div class="team-badge" style="background:${badgeColor}22;border-color:${badgeColor}55;color:${badgeColor}">${entry.team.short}</div>
             <div class="rival-info">
               <strong class="rival-name">${entry.team.name}</strong>
-              <span class="rival-meta">${entry.status} · Need ${entry.pressure.toFixed(1)} · Walk ${formatCrore(entry.valuation)}</span>
+              <span class="rival-meta">${fogMeta}</span>
               <div class="rival-heat-bar">
                 <div class="rival-heat-fill" style="width:${heatPct}%;background:${heatColor}"></div>
               </div>
             </div>
-            <strong class="rival-score" style="color:${heatColor}">${entry.heat.toFixed(1)}</strong>
+            <strong class="rival-score" style="color:${heatColor}">${revealActive ? entry.heat.toFixed(1) : "??"}</strong>
           </article>
         `;
       })
@@ -3530,11 +4047,12 @@
           .map(({ player, price }) => {
             const pom = state.seasonStats?.[player.id]?.pomAwards || 0;
             const rc = roleColors[player.role] || "#888";
+            const years = userTeam.contracts?.[player.id] ?? 1;
             return `
               <article class="squad-entry">
                 <div class="squad-entry-info">
                   <strong class="squad-name">${player.name}${pom > 0 ? ` <span class="pom-star">★${pom}</span>` : ""}</strong>
-                  <span class="squad-meta">${player.originTeam} · ${player.overseas ? "🌐 Overseas" : "🇮🇳 Domestic"}</span>
+                  <span class="squad-meta">${player.originTeam} · ${player.overseas ? "🌐 Overseas" : "🇮🇳 Domestic"} · Contract ${years}y</span>
                 </div>
                 <div class="squad-right">
                   <span class="role-badge" style="color:${rc};background:${rc}1a">${formatRole(player.role)}</span>
@@ -3633,15 +4151,26 @@
             const pitchBit = match.pitchLabel
               ? `<span class="pitch-badge" data-type="${match.pitchId}" style="font-size:0.68rem;padding:0.15rem 0.55rem;">${match.pitchLabel}</span>`
               : "";
+            const hasCard = match.innings1Scorecard || match.innings2Scorecard;
             return `
-              <article class="match-entry${isUser ? " user-match" : ""}">
+              <article class="match-entry${isUser ? " user-match" : ""}" ${hasCard ? `data-match-idx="${state.season.recentMatches.indexOf(match)}"` : ""}>
                 <strong>${getTeamById(match.homeId).short} ${match.homeScore} — ${getTeamById(match.awayId).short} ${match.awayScore}</strong>
                 <span class="match-meta">${match.phase} · ${match.margin} · POM: ${match.playerOfMatch}</span>
                 ${pitchBit || chips ? `<div class="match-tactic-tags">${pitchBit}${chips}</div>` : ""}
+                ${hasCard ? '<button class="sc-view-btn">Scorecard</button>' : ""}
               </article>
             `;
           }).join("")
       : '<p class="empty-state">No matches simulated yet.</p>';
+
+    // Wire scorecard buttons
+    refs.recentMatches.querySelectorAll(".sc-view-btn").forEach((btn) => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const idx = parseInt(btn.closest(".match-entry").dataset.matchIdx, 10);
+        if (!isNaN(idx)) showScorecardModal(state.season.recentMatches[idx]);
+      }, { once: true });
+    });
 
     // Enhanced points table with team badges and qualification line
     const sorted = getSortedTable();
@@ -3683,6 +4212,311 @@
         }).join("")}
       </div>
     `;
+  }
+
+  function renderScenarioPanel() {
+    if (!refs.scenarioOpponent || !state) return;
+    const current = refs.scenarioOpponent.value;
+    const options = state.franchises
+      .filter((f) => f.id !== state.userFranchiseId)
+      .map((f) => `<option value="${f.id}">${f.name}</option>`)
+      .join("");
+    refs.scenarioOpponent.innerHTML = options || '<option value="">No opponent</option>';
+    if (current && refs.scenarioOpponent.querySelector(`option[value="${current}"]`)) {
+      refs.scenarioOpponent.value = current;
+    }
+  }
+
+  function runScenarioMode() {
+    if (!state) return;
+    const userTeam = getUserTeam();
+    const opp = getTeamById(refs.scenarioOpponent?.value);
+    const pitch = PITCH_TYPES.find((p) => p.id === refs.scenarioPitch?.value) || PITCH_TYPES[0];
+    const runsNeeded = clamp(Number(refs.scenarioRunsNeeded?.value || 0), 1, 120);
+    const oversLeft = clamp(Number(refs.scenarioOversLeft?.value || 0), 1, 20);
+    const wktsInHand = clamp(Number(refs.scenarioWktsInHand?.value || 0), 1, 10);
+    if (!userTeam || !opp) return;
+
+    const userLineup = selectLineup(userTeam);
+    const oppLineup = selectLineup(opp);
+    const bat = calculateLineupStrength(userTeam, userLineup);
+    const bowl = calculateLineupStrength(opp, oppLineup);
+    const requiredRR = runsNeeded / oversLeft;
+
+    // Scenario engine: use weighted pitch + pressure + wickets in hand.
+    const phaseBias = oversLeft <= 5 ? pitch.deathRR : oversLeft <= 10 ? pitch.middleRR : pitch.powerplayRR;
+    const edge = (bat.batting - bowl.bowling) * 0.045 + (wktsInHand - 5) * 0.22 + phaseBias * 0.58;
+    const expectedRR = clamp(7 + edge + randomNormal(0, 0.45), 4.2, 15.2);
+    const projectedRuns = Math.round(expectedRR * oversLeft);
+    const pressurePenalty = Math.max(0, (requiredRR - expectedRR) * oversLeft * 0.28);
+    const adjustedRuns = Math.max(0, Math.round(projectedRuns - pressurePenalty));
+    const margin = adjustedRuns - runsNeeded;
+    const winProb = clamp(50 + margin * 2.3 + (wktsInHand - 5) * 3.1, 3, 97);
+    const outcome = margin >= 0 ? `CHASED with ${wktsInHand - Math.max(1, Math.round(oversLeft / 4))} wickets left` : `SHORT by ${Math.abs(margin)} runs`;
+
+    refs.scenarioOutput.innerHTML = `
+      <strong>${userTeam.short} vs ${opp.short} · ${pitch.label}</strong><br/>
+      Need <b>${runsNeeded}</b> from <b>${oversLeft}</b> overs (RR ${requiredRR.toFixed(2)}).<br/>
+      Projected: <b>${adjustedRuns}</b> (${expectedRR.toFixed(2)} rpo) → <b>${outcome}</b>.<br/>
+      Win chance: <b>${winProb.toFixed(1)}%</b>.
+    `;
+  }
+
+  // ── Stats Database ──────────────────────────────────────────────────────────
+
+  function renderStats() {
+    if (!state || !refs.statsTableWrap) return;
+    const seasonActive = state.season?.status && state.season.status !== "locked";
+    if (!seasonActive || Object.keys(state.seasonStats).length === 0) {
+      refs.statsTableWrap.innerHTML = '<p class="muted-text">Play matches to populate stats.</p>';
+      return;
+    }
+
+    // Populate team filter if not already done
+    if (refs.statsTeamFilter.options.length <= 1) {
+      for (const f of state.franchises) {
+        const opt = document.createElement("option");
+        opt.value = f.id; opt.textContent = f.short;
+        refs.statsTeamFilter.appendChild(opt);
+      }
+    }
+
+    const search = (refs.statsSearch.value ?? "").toLowerCase();
+    const teamFilter = refs.statsTeamFilter.value;
+    const roleFilter = refs.statsRoleFilter.value;
+
+    // Build rows from seasonStats
+    const rows = [];
+    for (const [playerId, s] of Object.entries(state.seasonStats)) {
+      if ((s.matches ?? 0) === 0) continue;
+      const player = state.players.find((p) => p.id === playerId);
+      if (!player) continue;
+      const team = state.franchises.find((t) => t.squad.includes(playerId));
+      if (!team) continue;
+
+      // Filters
+      if (search && !player.name.toLowerCase().includes(search)) continue;
+      if (teamFilter !== "all" && team.id !== teamFilter) continue;
+      if (roleFilter !== "all" && player.role !== roleFilter) continue;
+
+      // Computed stats
+      const battingAvg = (s.innings - s.notOuts) > 0 ? (s.runs / (s.innings - s.notOuts)) : s.runs;
+      const strikeRate = s.ballsFaced > 0 ? (s.runs / s.ballsFaced * 100) : 0;
+      const bowlingAvg = s.wickets > 0 ? (s.runsConceded / s.wickets) : 0;
+      const economy = s.oversBowled > 0 ? (s.runsConceded / s.oversBowled) : 0;
+      const bowlingSR = s.wickets > 0 ? ((s.oversBowled * 6) / s.wickets) : 0;
+      const hs = s.highScore > 0 ? `${s.highScore}${s.highScoreNotOut ? "*" : ""}` : "-";
+      const bb = s.bestBowlingWickets > 0 ? `${s.bestBowlingWickets}/${s.bestBowlingRuns}` : "-";
+
+      rows.push({
+        id: playerId, name: player.name, role: player.role,
+        teamShort: team.short, teamColors: team.colors,
+        matches: s.matches, innings: s.innings, notOuts: s.notOuts,
+        runs: s.runs, ballsFaced: s.ballsFaced, fours: s.fours, sixes: s.sixes,
+        highScore: s.highScore, hs, battingAvg, strikeRate,
+        fifties: s.fifties, hundreds: s.hundreds,
+        oversBowled: s.oversBowled, runsConceded: s.runsConceded,
+        wickets: s.wickets, economy, bowlingAvg, bowlingSR, bb,
+        dots: s.dots, catches: s.catches, pomAwards: s.pomAwards,
+      });
+    }
+
+    // Sort
+    rows.sort((a, b) => {
+      const av = a[statsSortKey];
+      const bv = b[statsSortKey];
+      if (typeof av === "string" || typeof bv === "string") {
+        const cmp = String(av ?? "").localeCompare(String(bv ?? ""), undefined, { sensitivity: "base" });
+        return cmp * statsSortDir;
+      }
+      const na = Number(av ?? 0);
+      const nb = Number(bv ?? 0);
+      return (nb - na) * statsSortDir;
+    });
+
+    if (rows.length === 0) {
+      refs.statsTableWrap.innerHTML = '<p class="muted-text">No matching players found.</p>';
+      return;
+    }
+
+    const isBatting = statsTab === "batting";
+    const cols = isBatting
+      ? [
+          { key: "name", label: "Player", cls: "name-col" },
+          { key: "teamShort", label: "Team", cls: "team-col" },
+          { key: "matches", label: "M" },
+          { key: "innings", label: "Inn" },
+          { key: "runs", label: "Runs" },
+          { key: "hs", label: "HS", sortKey: "highScore" },
+          { key: "battingAvg", label: "Avg", fmt: 1 },
+          { key: "strikeRate", label: "SR", fmt: 1 },
+          { key: "fifties", label: "50s" },
+          { key: "hundreds", label: "100s" },
+          { key: "fours", label: "4s" },
+          { key: "sixes", label: "6s" },
+        ]
+      : [
+          { key: "name", label: "Player", cls: "name-col" },
+          { key: "teamShort", label: "Team", cls: "team-col" },
+          { key: "matches", label: "M" },
+          { key: "oversBowled", label: "Ov" },
+          { key: "wickets", label: "Wkts" },
+          { key: "bb", label: "BBI", sortKey: "bestBowlingWickets" },
+          { key: "economy", label: "Econ", fmt: 2 },
+          { key: "bowlingAvg", label: "Avg", fmt: 1 },
+          { key: "bowlingSR", label: "SR", fmt: 1 },
+          { key: "dots", label: "Dots" },
+          { key: "catches", label: "Ct" },
+          { key: "pomAwards", label: "POM" },
+        ];
+
+    const thRow = cols.map((c) => {
+      const sk = c.sortKey ?? c.key;
+      const active = statsSortKey === sk;
+      const arrow = active ? (statsSortDir === -1 ? " ▼" : " ▲") : "";
+      return `<th class="${c.cls ?? "num-col"} sortable" data-sort="${sk}">${c.label}${arrow}</th>`;
+    }).join("");
+
+    const bodyRows = rows.slice(0, 80).map((r, idx) => {
+      const cells = cols.map((c) => {
+        let val = r[c.key];
+        if (c.fmt !== undefined && typeof val === "number") val = val.toFixed(c.fmt);
+        if (c.key === "name") {
+          const roleClass = r.role.toLowerCase();
+          return `<td class="name-col"><span class="role-dot ${roleClass}"></span>${val}</td>`;
+        }
+        if (c.key === "teamShort") {
+          const bg = r.teamColors?.primary ?? "#666";
+          return `<td class="team-col"><span class="team-pill" style="background:${bg}">${val}</span></td>`;
+        }
+        return `<td class="num-col">${val}</td>`;
+      }).join("");
+      return `<tr class="${idx % 2 === 0 ? "even" : "odd"}">${cells}</tr>`;
+    }).join("");
+
+    refs.statsTableWrap.innerHTML = `
+      <table class="stats-table">
+        <thead><tr>${thRow}</tr></thead>
+        <tbody>${bodyRows}</tbody>
+      </table>
+    `;
+
+    // Wire up sort headers
+    refs.statsTableWrap.querySelectorAll("th.sortable").forEach((th) => {
+      th.addEventListener("click", () => {
+        const key = th.dataset.sort;
+        if (statsSortKey === key) statsSortDir *= -1;
+        else { statsSortKey = key; statsSortDir = -1; }
+        renderStats();
+      }, { once: true });
+    });
+  }
+
+  function initStatsListeners() {
+    // Tab toggle
+    refs.statsBattingTab?.addEventListener("click", () => {
+      statsTab = "batting"; statsSortKey = "runs"; statsSortDir = -1;
+      refs.statsBattingTab.classList.add("active");
+      refs.statsBowlingTab.classList.remove("active");
+      renderStats();
+    });
+    refs.statsBowlingTab?.addEventListener("click", () => {
+      statsTab = "bowling"; statsSortKey = "wickets"; statsSortDir = -1;
+      refs.statsBowlingTab.classList.add("active");
+      refs.statsBattingTab.classList.remove("active");
+      renderStats();
+    });
+    // Filters
+    refs.statsSearch?.addEventListener("input", () => renderStats());
+    refs.statsTeamFilter?.addEventListener("change", () => renderStats());
+    refs.statsRoleFilter?.addEventListener("change", () => renderStats());
+  }
+
+  // ── Scorecard Modal (view from recent matches) ──────────────────────────────
+
+  function showScorecardModal(matchEntry) {
+    if (!matchEntry) return;
+    const sc1 = matchEntry.innings1Scorecard;
+    const sc2 = matchEntry.innings2Scorecard;
+    if (!sc1 && !sc2) {
+      addLog("Scorecard not available for this match.", "neutral");
+      return;
+    }
+
+    const homeTeam = getTeamById(matchEntry.homeId);
+    const awayTeam = getTeamById(matchEntry.awayId);
+    const firstTeam = getTeamById(matchEntry.firstBattingId);
+    const secondTeam = matchEntry.firstBattingId === matchEntry.homeId ? awayTeam : homeTeam;
+
+    function buildBattingHTML(card, teamName) {
+      if (!card?.battingCard?.length) return "";
+      const rows = card.battingCard.map((b) =>
+        `<tr>
+          <td class="sc-name"><span class="role-dot ${b.role.toLowerCase()}"></span>${b.name}</td>
+          <td class="sc-num">${b.runs}</td>
+          <td class="sc-num">${b.balls}</td>
+          <td class="sc-num">${b.fours}</td>
+          <td class="sc-num">${b.sixes}</td>
+          <td class="sc-num">${b.sr}</td>
+          <td class="sc-num">${b.notOut ? "not out" : ""}</td>
+        </tr>`
+      ).join("");
+      return `<div class="sc-section">
+        <p class="sc-team-label">${teamName} — Batting</p>
+        <table class="sc-table"><thead><tr>
+          <th>Batter</th><th>R</th><th>B</th><th>4s</th><th>6s</th><th>SR</th><th></th>
+        </tr></thead><tbody>${rows}</tbody></table>
+      </div>`;
+    }
+
+    function buildBowlingHTML(card, teamName) {
+      if (!card?.bowlingCard?.length) return "";
+      const rows = card.bowlingCard.map((bw) =>
+        `<tr>
+          <td class="sc-name"><span class="role-dot ${bw.role.toLowerCase()}"></span>${bw.name}</td>
+          <td class="sc-num">${bw.overs}</td>
+          <td class="sc-num">${bw.runsConceded}</td>
+          <td class="sc-num">${bw.wickets}</td>
+          <td class="sc-num">${bw.economy}</td>
+          <td class="sc-num">${bw.dots}</td>
+        </tr>`
+      ).join("");
+      return `<div class="sc-section">
+        <p class="sc-team-label">${teamName} — Bowling</p>
+        <table class="sc-table"><thead><tr>
+          <th>Bowler</th><th>Ov</th><th>R</th><th>W</th><th>Econ</th><th>Dots</th>
+        </tr></thead><tbody>${rows}</tbody></table>
+      </div>`;
+    }
+
+    const html = `
+      <div class="scorecard-modal-inner">
+        <div class="sc-header">
+          <h3>${homeTeam.short} ${matchEntry.homeScore} vs ${awayTeam.short} ${matchEntry.awayScore}</h3>
+          <p class="sc-summary">${matchEntry.summary}</p>
+        </div>
+        <div class="sc-innings">
+          <p class="sc-innings-title">1st Innings: ${firstTeam.short} ${matchEntry.firstBattingId === matchEntry.homeId ? matchEntry.homeScore : matchEntry.awayScore}</p>
+          ${buildBattingHTML(sc1, firstTeam.short)}
+          ${buildBowlingHTML(sc1, secondTeam.short)}
+        </div>
+        <div class="sc-innings">
+          <p class="sc-innings-title">2nd Innings: ${secondTeam.short} ${matchEntry.firstBattingId === matchEntry.homeId ? matchEntry.awayScore : matchEntry.homeScore}</p>
+          ${buildBattingHTML(sc2, secondTeam.short)}
+          ${buildBowlingHTML(sc2, firstTeam.short)}
+        </div>
+        <button class="button button-primary sc-close-btn" id="closeScorecardBtn">Close</button>
+      </div>
+    `;
+
+    refs.seasonAwardsContent.classList.add("scorecard-panel");
+    refs.seasonAwardsContent.innerHTML = html;
+    refs.seasonAwardsModal.classList.add("visible");
+    refs.seasonAwardsModal.setAttribute("aria-hidden", "false");
+    document.getElementById("closeScorecardBtn")?.addEventListener("click", () => {
+      refs.seasonAwardsModal.classList.remove("visible");
+      refs.seasonAwardsModal.setAttribute("aria-hidden", "true");
+    }, { once: true });
   }
 
   initialize();

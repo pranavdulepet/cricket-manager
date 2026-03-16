@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:www.cricwindow.com)",
+      "WebSearch"
+    ]
+  }
+}

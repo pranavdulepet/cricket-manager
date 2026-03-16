@@ -2,8 +2,8 @@
   const SETTINGS = {
     // IPL 2024 rules: 25-player squad cap, 8 overseas in squad, 4 overseas playing
     // This simulation uses 16-player squads (162 players ÷ 10 teams ≈ 16)
-    version: 3,
-    storageKey: "cricket-manager-autosave-v3",
+    version: 4,
+    storageKey: "cricket-manager-autosave-v4",
     initialPurse: 120,
     minimumBid: 0.20,    // ₹20 lakh — IPL minimum base price
     squadSize: 16,       // Target squad size per team
@@ -613,6 +613,27 @@
     { id: "rotate",     label: "Rotate",     desc: "Keep batters guessing with variety. Higher variance.", pitchFit: { flat: 0, green: 0, dusty: 0.5, slow: 0 } },
   ];
 
+  // Field placement setting — affects both batting and bowling run rates
+  const FIELD_SETTINGS = [
+    { id: "attacking", label: "Attacking Field", desc: "Slips, gully, close catchers. High risk/reward — creates chances but leaks runs.", pitchFit: { flat: -0.5, green: 1, dusty: 0.5, slow: -0.5 }, battingEffect: 0.06, bowlingEffect: 0.08 },
+    { id: "standard", label: "Standard Field", desc: "Balanced ring field. Safe option with no modifier.", pitchFit: { flat: 0, green: 0, dusty: 0, slow: 0 }, battingEffect: 0, bowlingEffect: 0 },
+    { id: "defensive", label: "Defensive Spread", desc: "Deep boundary riders. Cuts boundaries but allows easy singles.", pitchFit: { flat: 0.5, green: -0.5, dusty: -0.5, slow: 1 }, battingEffect: -0.04, bowlingEffect: -0.06 },
+  ];
+
+  // Middle overs bowling plan — new tactic dimension
+  const MIDDLE_TACTICS = [
+    { id: "contain", label: "Contain & Build", desc: "Dry up runs through the middle. Build dot-ball pressure.", pitchFit: { flat: -0.5, green: 0.5, dusty: 1, slow: 1 } },
+    { id: "wickets", label: "Hunt Wickets", desc: "Attack the stumps, vary pace. Risk giving runs for breakthroughs.", pitchFit: { flat: 0.5, green: 1, dusty: 0, slow: -0.5 } },
+    { id: "spin_web", label: "Spin Web", desc: "Deploy spinners in tandem. Lethal on turners, risky on flat tracks.", pitchFit: { flat: -1, green: -1, dusty: 1, slow: 0.5 } },
+  ];
+
+// Captaincy intent — impacts risk profile, chase composure, and death-over decisions
+const CAPTAINCY_TACTICS = [
+  { id: "calm", label: "Calm Controller", desc: "Absorb pressure and avoid collapses. Best for tense chases.", pitchFit: { flat: 0, green: 0.5, dusty: 0.5, slow: 1 }, battingEffect: -0.02, bowlingEffect: 0.03, chaseBonus: 0.08 },
+  { id: "balanced", label: "Balanced Captaincy", desc: "Mix attack and control. Reliable all-conditions option.", pitchFit: { flat: 0.2, green: 0.2, dusty: 0.2, slow: 0.2 }, battingEffect: 0, bowlingEffect: 0, chaseBonus: 0.03 },
+  { id: "aggressive", label: "Aggressive Calls", desc: "Attack for breakthroughs and momentum swings. High variance.", pitchFit: { flat: 0.8, green: 0.8, dusty: -0.2, slow: -0.4 }, battingEffect: 0.06, bowlingEffect: 0.04, chaseBonus: -0.02 },
+];
+
   window.CricketManagerData = {
     SETTINGS,
     DIFFICULTIES,
@@ -622,6 +643,9 @@
     BATTING_TACTICS,
     POWERPLAY_TACTICS,
     DEATH_TACTICS,
+    FIELD_SETTINGS,
+    MIDDLE_TACTICS,
+    CAPTAINCY_TACTICS,
     generatePlayers,
     roundPrice,
   };

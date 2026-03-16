@@ -1634,6 +1634,12 @@ h2 {
   padding: 2rem 1.8rem;
 }
 
+.awards-panel.scorecard-panel {
+  max-width: min(1040px, 96vw);
+  text-align: left;
+  padding: 1.4rem 1.2rem;
+}
+
 .awards-title {
   font-size: 1.4rem;
   font-weight: 800;
@@ -1729,4 +1735,308 @@ h2 {
 .history-entry strong {
   color: var(--text);
   font-size: 0.76rem;
+}
+
+/* ─── Stats Database ─────────────────────────────────────────────────────── */
+
+.stats-card {
+  margin-top: 1rem;
+}
+
+.stats-toggle-row {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.stats-tab {
+  min-height: 2rem;
+  padding: 0.35rem 0.8rem;
+  font-size: 0.74rem;
+}
+
+.stats-tab.active {
+  border-color: var(--team-primary);
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--text);
+}
+
+.stats-filters {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.2fr) repeat(2, minmax(120px, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 0.8rem;
+}
+
+.stats-search,
+.stats-select {
+  width: 100%;
+  min-height: 2.2rem;
+  border-radius: 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  padding: 0.4rem 0.65rem;
+  font-size: 0.8rem;
+}
+
+.stats-search:focus,
+.stats-select:focus {
+  outline: 2px solid rgba(74, 174, 255, 0.35);
+  outline-offset: 1px;
+}
+
+.stats-table-wrap {
+  overflow: auto;
+  max-height: 32rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.75rem;
+  background: rgba(6, 10, 24, 0.56);
+}
+
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 760px;
+}
+
+.stats-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: rgba(14, 19, 38, 0.98);
+  color: var(--muted);
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.5rem 0.4rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.stats-table thead th.sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.stats-table thead th.sortable:hover {
+  color: var(--text);
+}
+
+.stats-table tbody tr.even {
+  background: rgba(255, 255, 255, 0.01);
+}
+
+.stats-table tbody tr.odd {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.stats-table tbody tr:hover {
+  background: rgba(74, 174, 255, 0.09);
+}
+
+.stats-table td {
+  padding: 0.45rem 0.4rem;
+  font-size: 0.76rem;
+  color: var(--text);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.stats-table .name-col {
+  min-width: 190px;
+  text-align: left;
+  font-weight: 600;
+}
+
+.stats-table .team-col {
+  min-width: 80px;
+  text-align: center;
+}
+
+.stats-table .num-col {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.team-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.2rem;
+  padding: 0.14rem 0.44rem;
+  border-radius: 999px;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.66rem;
+  letter-spacing: 0.06em;
+}
+
+.role-dot {
+  display: inline-block;
+  width: 0.48rem;
+  height: 0.48rem;
+  border-radius: 50%;
+  margin-right: 0.4rem;
+  vertical-align: middle;
+}
+
+.role-dot.wk {
+  background: #ffd166;
+}
+
+.role-dot.bat {
+  background: #55d187;
+}
+
+.role-dot.ar {
+  background: #4aaeff;
+}
+
+.role-dot.bwl {
+  background: #ff9f43;
+}
+
+/* ─── Match Scorecard ─────────────────────────────────────────────────────── */
+
+.sc-view-btn {
+  margin-top: 0.45rem;
+  align-self: flex-start;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+  border-radius: 0.5rem;
+  padding: 0.25rem 0.58rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sc-view-btn:hover {
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.scorecard-modal-inner {
+  text-align: left;
+  width: min(980px, 96vw);
+  max-height: 86vh;
+  overflow: auto;
+}
+
+.sc-header h3 {
+  margin: 0 0 0.25rem;
+  font-size: 1.06rem;
+}
+
+.sc-summary {
+  margin: 0 0 0.8rem;
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+.sc-innings {
+  margin-bottom: 1rem;
+  padding-top: 0.7rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.sc-innings-title {
+  margin: 0 0 0.45rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.sc-section {
+  margin-bottom: 0.65rem;
+}
+
+.sc-team-label {
+  margin: 0 0 0.3rem;
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+.sc-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 0.4rem;
+}
+
+.sc-table th,
+.sc-table td {
+  padding: 0.35rem 0.4rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 0.74rem;
+}
+
+.sc-table th {
+  color: var(--muted);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.sc-name {
+  text-align: left;
+}
+
+.sc-num {
+  text-align: right;
+}
+
+.sc-close-btn {
+  margin-top: 0.4rem;
+}
+
+@media (max-width: 960px) {
+  .stats-filters {
+    grid-template-columns: 1fr;
+  }
+}
+
+.scout-btn {
+  min-height: 2rem;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.72rem;
+}
+
+.scenario-box {
+  margin-top: 0.8rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 0.8rem;
+}
+
+.scenario-box h3 {
+  margin: 0;
+  font-size: 0.96rem;
+}
+
+.scenario-controls {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(120px, 1fr));
+  gap: 0.45rem;
+  margin: 0.4rem 0 0.65rem;
+}
+
+.retention-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 1rem 0;
+}
+
+.retention-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.6rem;
+  padding: 0.45rem 0.6rem;
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 0.78rem;
+}
+
+@media (max-width: 1100px) {
+  .scenario-controls {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
 }
