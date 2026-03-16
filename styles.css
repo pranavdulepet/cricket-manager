@@ -1,0 +1,1732 @@
+:root {
+  --bg-deep: #06111a;
+  --bg-mid: #0f2230;
+  --surface: rgba(7, 18, 27, 0.8);
+  --surface-strong: rgba(10, 24, 37, 0.92);
+  --surface-soft: rgba(255, 255, 255, 0.06);
+  --border: rgba(255, 255, 255, 0.1);
+  --text: #f6efe5;
+  --muted: #b9c5cd;
+  --team-primary: #ffb81c;
+  --team-secondary: #014f86;
+  --positive: #7ddc8e;
+  --warning: #ffcf66;
+  --danger: #ff8c7d;
+  --shadow: 0 28px 80px rgba(0, 0, 0, 0.36);
+  --radius-lg: 28px;
+  --radius-md: 18px;
+  --radius-sm: 12px;
+  --display-font: "Avenir Next Condensed", "Gill Sans", "Trebuchet MS", sans-serif;
+  --body-font: "Optima", "Candara", "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: var(--body-font);
+  color: var(--text);
+  background:
+    radial-gradient(circle at top left, rgba(255, 184, 28, 0.16), transparent 26%),
+    radial-gradient(circle at 80% 20%, rgba(0, 143, 122, 0.18), transparent 22%),
+    linear-gradient(160deg, #051018 0%, #0a1521 45%, #07131d 100%);
+  overflow-x: hidden;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+.backdrop {
+  position: fixed;
+  inset: auto;
+  border-radius: 50%;
+  filter: blur(10px);
+  opacity: 0.35;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.backdrop-a {
+  width: 26rem;
+  height: 26rem;
+  top: -8rem;
+  right: -6rem;
+  background: linear-gradient(135deg, rgba(255, 184, 28, 0.7), rgba(255, 91, 78, 0.2));
+  animation: floatDrift 18s ease-in-out infinite;
+}
+
+.backdrop-b {
+  width: 22rem;
+  height: 22rem;
+  bottom: -8rem;
+  left: -4rem;
+  background: linear-gradient(135deg, rgba(0, 116, 217, 0.58), rgba(0, 214, 170, 0.14));
+  animation: floatDrift 16s ease-in-out infinite reverse;
+}
+
+.grain {
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.015), rgba(255, 255, 255, 0.015)),
+    radial-gradient(rgba(255, 255, 255, 0.02) 0.7px, transparent 0.7px);
+  background-size: 100% 100%, 6px 6px;
+  mix-blend-mode: soft-light;
+  opacity: 0.45;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.app-shell {
+  position: relative;
+  z-index: 1;
+  width: min(1440px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 1.25rem 0 2rem;
+}
+
+.card {
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015)),
+    var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(18px);
+}
+
+.hero-panel {
+  display: grid;
+  grid-template-columns: 1.45fr auto;
+  gap: 1.5rem;
+  padding: 1.6rem;
+  margin-bottom: 1.2rem;
+  overflow: hidden;
+}
+
+.hero-copy {
+  max-width: 56rem;
+}
+
+.eyebrow,
+.section-kicker {
+  margin: 0 0 0.35rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.72rem;
+  color: var(--warning);
+}
+
+h1,
+h2 {
+  margin: 0;
+  font-family: var(--display-font);
+  letter-spacing: 0.02em;
+}
+
+h1 {
+  font-size: clamp(2rem, 4vw, 3.8rem);
+  line-height: 0.94;
+}
+
+h2 {
+  font-size: clamp(1.3rem, 2vw, 2rem);
+  line-height: 1;
+}
+
+.hero-text,
+.modal-text,
+.insight-text,
+.player-meta,
+.instruction-copy p,
+.instruction-copy li {
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.hero-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  align-content: flex-start;
+  justify-content: flex-end;
+}
+
+.hero-stats {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.8rem;
+}
+
+.hero-stat,
+.valuation-item,
+.bid-tile,
+.purse-block,
+.need-card,
+.squad-entry,
+.leader-entry,
+.log-entry,
+.rival-entry,
+.insight-card {
+  background: var(--surface-soft);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+}
+
+.hero-stat {
+  padding: 0.95rem 1rem;
+}
+
+.hero-stat-label,
+.valuation-item span,
+.bid-tile span,
+.purse-block span,
+.need-label,
+.need-value,
+.squad-meta,
+.leader-meta,
+.log-meta,
+.rival-meta {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.dashboard {
+  display: grid;
+  grid-template-columns: minmax(0, 1.85fr) minmax(320px, 0.95fr);
+  gap: 1.2rem;
+  align-items: start;
+}
+
+.arena-column,
+.rail-column {
+  display: grid;
+  gap: 1.2rem;
+}
+
+.spotlight-card,
+.franchise-card,
+.squad-card,
+.leaderboard-card,
+.instructions-card,
+.log-card,
+.rival-card,
+.season-card {
+  padding: 1.25rem;
+}
+
+.section-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.spotlight-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 2rem;
+  padding: 0.28rem 0.8rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+.pill.neutral {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.pill.domestic {
+  background: rgba(23, 164, 95, 0.16);
+  color: #cbffd9;
+}
+
+.pill.overseas {
+  background: rgba(68, 140, 255, 0.18);
+  color: #cfe1ff;
+}
+
+.spotlight-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.15fr);
+  gap: 1rem;
+}
+
+.player-card,
+.auction-card {
+  padding: 1rem;
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tag-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  min-height: 2rem;
+  margin-top: 1rem;
+}
+
+.tag-chip {
+  padding: 0.35rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 0.78rem;
+  color: var(--text);
+}
+
+.valuation-grid,
+.bid-summary,
+.purse-row,
+.needs-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.valuation-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 1rem;
+}
+
+.bid-summary {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.valuation-item,
+.bid-tile,
+.purse-block,
+.need-card {
+  padding: 0.9rem 1rem;
+}
+
+.valuation-item strong,
+.bid-tile strong,
+.purse-block strong,
+.need-card strong,
+.squad-name,
+.leader-name,
+.rival-name {
+  font-size: 1.06rem;
+}
+
+.timer-wrap {
+  margin: 1rem 0;
+}
+
+.timer-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+  color: var(--muted);
+}
+
+.timer-track {
+  height: 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.timer-fill {
+  height: 100%;
+  width: 0%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--team-primary), #ff6b4a);
+  box-shadow: 0 0 16px rgba(255, 184, 28, 0.55);
+  transition: width 180ms linear, background 180ms linear;
+}
+
+.control-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.proxy-control {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.proxy-control input,
+.setup-form select {
+  min-width: 7rem;
+  padding: 0.62rem 0.8rem;
+  color: var(--text);
+  background: rgba(3, 12, 18, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+}
+
+.insight-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.insight-card {
+  padding: 0.9rem 1rem;
+}
+
+.split-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: 1.2rem;
+}
+
+.auction-log,
+.rival-board,
+.squad-list,
+.leaderboard,
+.recent-matches,
+.points-table {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.season-head {
+  align-items: center;
+}
+
+.season-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+}
+
+.season-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: 1rem;
+}
+
+.season-panel {
+  padding: 1rem;
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.season-summary,
+.match-entry,
+.table-row {
+  background: var(--surface-soft);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+}
+
+.season-summary {
+  padding: 0.95rem 1rem;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.match-entry,
+.table-row {
+  padding: 0.85rem 0.95rem;
+}
+
+.match-entry strong,
+.table-row strong {
+  display: block;
+}
+
+.match-meta,
+.table-meta {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.log-entry,
+.rival-entry,
+.squad-entry,
+.leader-entry {
+  padding: 0.85rem 0.95rem;
+}
+
+.log-entry {
+  border-left: 3px solid var(--team-primary);
+}
+
+.log-entry.positive {
+  border-left-color: var(--positive);
+}
+
+.log-entry.warning {
+  border-left-color: var(--warning);
+}
+
+.log-entry.danger {
+  border-left-color: var(--danger);
+}
+
+.rival-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.8rem;
+}
+
+.rival-score {
+  min-width: 4.2rem;
+  text-align: right;
+}
+
+.purse-row,
+.needs-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.needs-grid {
+  margin-top: 0.75rem;
+}
+
+.need-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.need-card::after {
+  content: "";
+  position: absolute;
+  inset: auto -35% -45% auto;
+  width: 5.5rem;
+  height: 5.5rem;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.12), transparent 65%);
+}
+
+.need-card strong.healthy {
+  color: var(--positive);
+}
+
+.need-card strong.warning {
+  color: var(--warning);
+}
+
+.need-card strong.danger {
+  color: var(--danger);
+}
+
+.squad-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+}
+
+.leader-entry {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.8rem;
+  align-items: center;
+}
+
+.leader-rank {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: inline-grid;
+  place-items: center;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--warning);
+  font-weight: 700;
+}
+
+.instruction-copy ul {
+  margin: 0.9rem 0 0;
+  padding-left: 1.2rem;
+  color: var(--muted);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.85rem;
+  padding: 0.65rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+}
+
+.button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.button-primary {
+  color: #041017;
+  background: linear-gradient(135deg, var(--team-primary), #ffd980);
+  border-color: transparent;
+  font-weight: 800;
+}
+
+.button-secondary,
+.button-ghost {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.button-ghost {
+  background: transparent;
+}
+
+.file-button {
+  position: relative;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(2, 7, 11, 0.74);
+  backdrop-filter: blur(12px);
+  z-index: 4;
+}
+
+.modal.visible {
+  display: flex;
+}
+
+.modal-card {
+  width: min(760px, 100%);
+  padding: 1.4rem;
+  border-radius: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background:
+    linear-gradient(155deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02)),
+    rgba(6, 16, 24, 0.94);
+  box-shadow: var(--shadow);
+}
+
+.setup-form {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.setup-form label {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.setup-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.empty-state {
+  color: var(--muted);
+  padding: 0.25rem 0;
+}
+
+.pulse {
+  animation: pulseGlow 1.2s ease-in-out infinite;
+}
+
+@keyframes floatDrift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(0, 1.25rem, 0) scale(1.04);
+  }
+}
+
+@keyframes pulseGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 rgba(255, 184, 28, 0);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(255, 184, 28, 0.35);
+  }
+}
+
+/* ─── Player Portrait ──────────────────────────────────────────────────────── */
+
+.player-portrait {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3.2rem;
+  line-height: 1;
+  margin-bottom: 0.2rem;
+  opacity: 0.88;
+  transition: opacity 300ms ease;
+  user-select: none;
+}
+
+/* ─── Stat Bars ────────────────────────────────────────────────────────────── */
+
+.stat-bar-grid {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.85rem;
+}
+
+.stat-bar-row {
+  display: grid;
+  grid-template-columns: 6rem 1fr 2.2rem;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.stat-bar-label {
+  font-size: 0.71rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.stat-bar-track {
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.stat-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 450ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.stat-bar-value {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-align: right;
+  color: var(--text);
+}
+
+/* ─── Team Badge ───────────────────────────────────────────────────────────── */
+
+.team-badge {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.54rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  text-align: center;
+  line-height: 1.1;
+}
+
+.team-badge.gold   { box-shadow: 0 0 12px rgba(255, 215, 0, 0.45); }
+.team-badge.silver { box-shadow: 0 0 8px rgba(192, 192, 192, 0.3); }
+.team-badge.bronze { box-shadow: 0 0 8px rgba(205, 127, 50, 0.25); }
+
+/* ─── Rival Board — heat bars ──────────────────────────────────────────────── */
+
+.rival-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.rival-heat-bar {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 0.38rem;
+}
+
+.rival-heat-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 500ms ease;
+}
+
+/* ─── Leaderboard — odds overlay + bars ────────────────────────────────────── */
+
+.leader-entry {
+  position: relative;
+  overflow: hidden;
+}
+
+.leader-entry > * {
+  position: relative;
+  z-index: 1;
+}
+
+.leader-entry::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  width: var(--odds-pct, 0%);
+  background: var(--team-color, transparent);
+  opacity: 0.07;
+  border-radius: inherit;
+  pointer-events: none;
+  transition: width 600ms ease;
+  z-index: 0;
+}
+
+.odds-block {
+  text-align: right;
+  min-width: 4.5rem;
+}
+
+.odds-bar-track {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.07);
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 0.38rem;
+}
+
+.odds-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  opacity: 0.75;
+  transition: width 600ms ease;
+}
+
+/* ─── Squad list — role badges ─────────────────────────────────────────────── */
+
+.squad-entry-info {
+  min-width: 0;
+}
+
+.squad-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+  flex-shrink: 0;
+}
+
+.squad-entry {
+  align-items: start;
+}
+
+.role-badge {
+  display: inline-block;
+  padding: 0.18rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.67rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.squad-price {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.pom-star {
+  color: var(--warning);
+  font-size: 0.82rem;
+}
+
+/* ─── Bid Flash ──────────────────────────────────────────────────────────────  */
+
+@keyframes bidFlash {
+  0%   { background: rgba(255, 184, 28, 0.24); border-color: rgba(255, 184, 28, 0.55); }
+  100% { background: var(--surface-soft); border-color: rgba(255, 255, 255, 0.08); }
+}
+
+.bid-flash {
+  animation: bidFlash 0.8s ease-out forwards;
+}
+
+/* ─── Marquee player glow ────────────────────────────────────────────────────  */
+
+.player-card.marquee-player {
+  border-color: rgba(255, 184, 28, 0.42);
+  box-shadow: 0 0 32px rgba(255, 184, 28, 0.16), inset 0 0 28px rgba(255, 184, 28, 0.05);
+}
+
+@media (max-width: 1180px) {
+  .dashboard,
+  .spotlight-grid,
+  .split-row,
+  .season-grid,
+  .setup-form {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .hero-controls {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 760px) {
+  .app-shell {
+    width: min(100% - 1rem, 1440px);
+    padding-top: 0.7rem;
+  }
+
+  .hero-stats,
+  .valuation-grid,
+  .bid-summary,
+  .insight-grid,
+  .purse-row,
+  .needs-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .hero-stats,
+  .valuation-grid,
+  .bid-summary,
+  .insight-grid,
+  .purse-row,
+  .needs-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .control-row,
+  .setup-actions,
+  .season-actions {
+    align-items: stretch;
+  }
+
+  .button,
+  .file-button {
+    width: 100%;
+  }
+
+  .proxy-control {
+    width: 100%;
+  }
+}
+
+/* ─── Pitch Badge ─────────────────────────────────────────────────────────── */
+
+.pitch-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.85rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: var(--warning);
+}
+
+.pitch-badge[data-type="flat"]   { background: rgba(255, 207, 102, 0.18); border-color: rgba(255, 207, 102, 0.35); color: #ffd966; }
+.pitch-badge[data-type="green"]  { background: rgba(60, 200, 100, 0.16);  border-color: rgba(60, 200, 100, 0.32);  color: #5de68a; }
+.pitch-badge[data-type="dusty"]  { background: rgba(200, 140, 60, 0.18);  border-color: rgba(200, 140, 60, 0.34);  color: #e8a84a; }
+.pitch-badge[data-type="slow"]   { background: rgba(140, 140, 170, 0.18); border-color: rgba(140, 140, 170, 0.32); color: #b0b0cc; }
+
+.pitch-desc, .pitch-desc-sm {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+/* ─── Tactics Modal ───────────────────────────────────────────────────────── */
+
+.tactics-card {
+  width: min(820px, 100%);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.pitch-header-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.6rem 0 0.3rem;
+  flex-wrap: wrap;
+}
+
+.tactics-hint {
+  color: var(--warning);
+  font-size: 0.85rem;
+  margin: 0 0 1rem;
+  padding: 0.55rem 0.85rem;
+  background: rgba(255, 207, 102, 0.09);
+  border-left: 3px solid rgba(255, 207, 102, 0.4);
+  border-radius: 0 8px 8px 0;
+}
+
+.tactics-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.tactic-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tactic-group-label {
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin: 0;
+}
+
+.tactic-options {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.tactic-btn {
+  flex: 1 1 auto;
+  min-width: 140px;
+  padding: 0.65rem 0.9rem;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 160ms, background 160ms, transform 120ms;
+  color: var(--text);
+}
+
+.tactic-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateY(-1px);
+}
+
+.tactic-btn.selected {
+  border-color: var(--team-primary);
+  background: rgba(255, 184, 28, 0.12);
+}
+
+.tactic-btn strong {
+  display: block;
+  font-size: 0.88rem;
+  margin-bottom: 0.2rem;
+}
+
+.tactic-btn span {
+  font-size: 0.76rem;
+  color: var(--muted);
+  line-height: 1.3;
+}
+
+.tactic-btn.good-fit strong::after  { content: " ✓"; color: var(--positive); }
+.tactic-btn.bad-fit  strong::after  { content: " ✗"; color: var(--danger); }
+
+.tactic-advisor {
+  font-size: 0.82rem;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 0.6rem 0.9rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  margin: 0;
+  min-height: 2.4rem;
+  transition: color 200ms;
+}
+
+/* ─── Live Match Modal ────────────────────────────────────────────────────── */
+
+.live-match-card {
+  width: min(700px, 100%);
+  max-height: 92vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.live-match-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.live-pitch-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+/* Innings block */
+.innings-block {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius-md);
+  padding: 0.9rem 1rem;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 400ms ease, transform 400ms ease;
+}
+
+.innings-block.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.innings-team-label {
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  margin: 0 0 0.65rem;
+}
+
+/* Phase bars */
+.phase-bars {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+
+.phase-bar-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.phase-bar-label {
+  font-size: 0.68rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.phase-bar-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.phase-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  width: 0%;
+  transition: width 600ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.phase-bar-fill.powerplay { background: linear-gradient(90deg, #7ddc8e, #4ac76b); }
+.phase-bar-fill.middle    { background: linear-gradient(90deg, var(--warning), #e8a03a); }
+.phase-bar-fill.death     { background: linear-gradient(90deg, #ff8c7d, #ff5544); }
+
+.phase-bar-score {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.innings-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 0.1rem;
+}
+
+.innings-total-score {
+  font-size: 1.6rem;
+  font-weight: 800;
+  font-family: var(--display-font);
+  color: var(--text);
+}
+
+.innings-best {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+/* Result block */
+.live-result-block {
+  text-align: center;
+  padding: 0.75rem;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: var(--radius-md);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 400ms 200ms ease, transform 400ms 200ms ease;
+}
+
+.live-result-block.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.live-result-text {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0 0 0.3rem;
+  color: var(--positive);
+}
+
+.live-result-text.loss { color: var(--danger); }
+.live-result-text.tie  { color: var(--warning); }
+
+.live-pom-text {
+  font-size: 0.82rem;
+  color: var(--muted);
+  margin: 0 0 0.5rem;
+}
+
+/* Tactic feedback */
+.tactic-feedback {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  justify-content: center;
+  margin-top: 0.5rem;
+}
+
+.tactic-chip {
+  font-size: 0.74rem;
+  padding: 0.2rem 0.7rem;
+  border-radius: 999px;
+  font-weight: 600;
+}
+
+.tactic-chip.win  { background: rgba(125, 220, 142, 0.18); color: var(--positive); border: 1px solid rgba(125, 220, 142, 0.3); }
+.tactic-chip.loss { background: rgba(255, 140, 125, 0.18); color: var(--danger);   border: 1px solid rgba(255, 140, 125, 0.3); }
+.tactic-chip.neutral { background: rgba(255, 255, 255, 0.07); color: var(--muted); border: 1px solid rgba(255, 255, 255, 0.1); }
+
+/* Commentary */
+.live-commentary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  max-height: 140px;
+  overflow-y: auto;
+}
+
+.commentary-line {
+  font-size: 0.8rem;
+  color: var(--muted);
+  padding: 0.3rem 0.6rem;
+  border-left: 2px solid rgba(255, 255, 255, 0.1);
+  animation: fadeInUp 300ms ease forwards;
+  opacity: 0;
+}
+
+.commentary-line.highlight {
+  color: var(--text);
+  border-left-color: var(--team-primary);
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes countUp {
+  from { opacity: 0; transform: scale(0.85); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.innings-total-score.pop {
+  animation: countUp 350ms cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.live-continue-btn {
+  align-self: center;
+  min-width: 160px;
+}
+
+.hidden { display: none !important; }
+
+/* Match entries — enhanced */
+.match-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.match-entry:last-child { border-bottom: none; }
+
+.match-entry.user-match strong {
+  color: var(--team-primary);
+}
+
+.match-tactic-tags {
+  display: flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+  margin-top: 0.15rem;
+}
+
+/* ─── Sim Progress Overlay ────────────────────────────────────────────────── */
+
+.sim-overlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(2, 7, 11, 0.82);
+  backdrop-filter: blur(14px);
+  z-index: 5;
+}
+
+.sim-overlay[aria-hidden="false"] {
+  display: flex;
+}
+
+.sim-overlay-card {
+  width: min(600px, 100%);
+  padding: 1.6rem 1.5rem;
+  border-radius: 28px;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  background:
+    linear-gradient(155deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.02)),
+    rgba(6, 16, 24, 0.96);
+  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.sim-overlay-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.sim-overlay-title {
+  font-family: var(--display-font);
+  font-size: 1.45rem;
+  font-weight: 800;
+  margin: 0;
+  color: var(--text);
+}
+
+.sim-overlay-desc {
+  font-size: 0.84rem;
+  color: var(--muted);
+  margin: 0;
+  min-height: 1.2rem;
+}
+
+/* Progress bar */
+.sim-progress-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.sim-progress-track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.sim-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--team-primary), #ffde6a);
+  transition: width 240ms ease-out;
+}
+
+.sim-progress-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+/* Live feed */
+.sim-live-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  max-height: 160px;
+  overflow: hidden;
+}
+
+.sim-feed-entry {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.5rem 0.8rem;
+  align-items: center;
+  padding: 0.3rem 0.5rem;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  animation: feedSlideIn 200ms ease forwards;
+  opacity: 0;
+}
+
+.sim-feed-entry.sold   { background: rgba(125, 220, 142, 0.07); }
+.sim-feed-entry.unsold { background: rgba(255, 255, 255, 0.03); color: var(--muted); }
+
+.sim-feed-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sim-feed-team { font-size: 0.74rem; color: var(--muted); white-space: nowrap; }
+.sim-feed-price { font-weight: 700; white-space: nowrap; text-align: right; }
+.sim-feed-entry.sold   .sim-feed-price { color: var(--positive); }
+.sim-feed-entry.unsold .sim-feed-price { color: var(--muted); }
+
+@keyframes feedSlideIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Stats row */
+.sim-stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+
+.sim-stat {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  padding: 0.5rem 0.65rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.sim-stat span {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.sim-stat strong {
+  font-size: 0.88rem;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sim-cancel-btn {
+  align-self: flex-end;
+  font-size: 0.78rem;
+  min-height: 2.2rem;
+  padding: 0.4rem 1rem;
+}
+
+/* Season sim overlay (lighter) */
+.season-sim-overlay .sim-overlay-card,
+.season-sim-card {
+  width: min(380px, 100%);
+  padding: 1.2rem 1.4rem;
+  gap: 0.8rem;
+}
+
+/* Pulse spinner on title while running */
+.sim-overlay-title.running::after {
+  content: "";
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--team-primary);
+  margin-left: 0.55rem;
+  vertical-align: middle;
+  animation: simDot 1s ease-in-out infinite;
+}
+
+@keyframes simDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.3; transform: scale(0.6); }
+}
+
+/* Button loading state */
+.button.loading {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.button.loading::after {
+  content: "…";
+  margin-left: 0.3rem;
+  animation: simDot 0.8s infinite;
+}
+
+/* ─── Cap Leader Badges ──────────────────────────────────────────────────── */
+
+.cap-leaders {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+}
+
+.cap-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.cap-badge.orange-cap {
+  background: rgba(255, 107, 0, 0.15);
+  border: 1px solid rgba(255, 107, 0, 0.35);
+  color: #FF6B00;
+}
+
+.cap-badge.purple-cap {
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.35);
+  color: #8B5CF6;
+}
+
+.cap-badge.mvp-cap {
+  background: rgba(251, 191, 36, 0.15);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  color: #FBBF24;
+}
+
+.cap-badge.small {
+  font-size: 0.64rem;
+  padding: 0.15rem 0.5rem;
+}
+
+/* ─── Enhanced Points Table ──────────────────────────────────────────────── */
+
+.table-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 0.5rem;
+  transition: background 0.2s;
+}
+
+.table-row:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.table-row.user-row {
+  background: rgba(255, 255, 255, 0.06);
+  border-left: 3px solid var(--team-primary, #4aaeff);
+}
+
+.table-row.qualified {
+  border-left: 3px solid #22c55e;
+}
+
+.table-row.user-row.qualified {
+  border-left: 3px solid #22c55e;
+  background: rgba(34, 197, 94, 0.06);
+}
+
+.table-row.cutoff-line {
+  border-bottom: 2px dashed rgba(255, 255, 255, 0.15);
+  padding-bottom: 0.7rem;
+  margin-bottom: 0.3rem;
+}
+
+.table-rank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  font-size: 0.72rem;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.table-team-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.table-team-info strong {
+  font-size: 0.82rem;
+}
+
+.table-team-info .table-meta {
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.table-team-info .table-meta b {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.qualify-tag {
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.12);
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  letter-spacing: 0.08em;
+  flex-shrink: 0;
+}
+
+/* ─── Season Awards Modal ────────────────────────────────────────────────── */
+
+.awards-panel {
+  max-width: 520px;
+  text-align: center;
+  padding: 2rem 1.8rem;
+}
+
+.awards-title {
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin-bottom: 0.4rem;
+  background: linear-gradient(135deg, #FFD700, #FF6B00);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.awards-user-summary {
+  font-size: 0.88rem;
+  color: var(--muted);
+  margin-bottom: 1.2rem;
+}
+
+.awards-user-summary.champion-text {
+  color: #FFD700;
+  font-weight: 700;
+}
+
+.awards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.8rem;
+  margin-bottom: 1.4rem;
+}
+
+.award-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 1rem 0.8rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.8rem;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.award-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.award-card.champion-glow {
+  border-color: rgba(255, 215, 0, 0.4);
+  box-shadow: 0 0 24px rgba(255, 215, 0, 0.12);
+  background: rgba(255, 215, 0, 0.06);
+}
+
+.award-icon {
+  font-size: 2rem;
+}
+
+.award-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--award-color, var(--muted));
+}
+
+.award-value {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.awards-actions {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: center;
+}
+
+/* ─── Season History ─────────────────────────────────────────────────────── */
+
+.season-history {
+  margin-top: 0.6rem;
+  padding-top: 0.4rem;
+}
+
+.history-entry {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0;
+  font-size: 0.74rem;
+  color: var(--muted);
+  flex-wrap: wrap;
+}
+
+.history-entry strong {
+  color: var(--text);
+  font-size: 0.76rem;
+}

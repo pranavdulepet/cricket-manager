@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cricket Manager Auction Room</title>
+    <link rel="stylesheet" href="./styles.css?v=4" />
+  </head>
+  <body>
+    <div class="backdrop backdrop-a"></div>
+    <div class="backdrop backdrop-b"></div>
+    <div class="grain"></div>
+
+    <div class="app-shell">
+      <header class="hero-panel card">
+        <div class="hero-copy">
+          <p class="eyebrow">Local-Only IPL Franchise Auction Simulator</p>
+          <h1>Cricket Manager: Auction Room</h1>
+          <p class="hero-text">
+            Every franchise starts with the same purse. Your edge comes from
+            reading scarcity, forcing rivals into bad prices, and never leaving
+            your roster unbalanced.
+          </p>
+        </div>
+
+        <div class="hero-controls">
+          <button id="newCampaignBtn" class="button button-primary">
+            New Campaign
+          </button>
+          <button id="pauseBtn" class="button button-secondary">
+            Pause Auction
+          </button>
+          <button id="simAuctionBtn" class="button button-secondary">
+            Sim Auction
+          </button>
+          <button id="saveBtn" class="button button-secondary">
+            Save Local
+          </button>
+          <button id="exportBtn" class="button button-secondary">
+            Export Save
+          </button>
+          <label class="button button-secondary file-button" for="importInput">
+            Import Save
+          </label>
+          <input id="importInput" type="file" accept="application/json" hidden />
+        </div>
+
+        <div class="hero-stats">
+          <div class="hero-stat">
+            <span class="hero-stat-label">Game Phase</span>
+            <strong id="auctionPhase">Waiting</strong>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-label">Lot</span>
+            <strong id="lotIndicator">0 / 0</strong>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-label">Market Pulse</span>
+            <strong id="marketPulse">No activity yet</strong>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-label">Autosave</span>
+            <strong id="saveStatus">Not saved</strong>
+          </div>
+          <div class="hero-stat">
+            <span class="hero-stat-label">Season</span>
+            <strong id="seasonStatus">Auction locked</strong>
+          </div>
+        </div>
+      </header>
+
+      <main class="dashboard">
+        <section class="arena-column">
+          <section class="card spotlight-card">
+            <div class="section-head">
+              <div>
+                <p class="section-kicker">Live Lot</p>
+                <h2 id="playerName">Launch a campaign to enter the room</h2>
+              </div>
+              <div class="spotlight-badges">
+                <span id="playerRoleBadge" class="pill neutral">Auction idle</span>
+                <span id="playerNationBadge" class="pill neutral">Local save only</span>
+              </div>
+            </div>
+
+            <div class="spotlight-grid">
+              <div class="player-card" id="playerCard">
+                <div id="playerPortrait" class="player-portrait"></div>
+                <p id="playerMeta" class="player-meta">
+                  Pick a franchise to begin your auction campaign.
+                </p>
+                <div id="playerTags" class="tag-row"></div>
+                <div id="statBars" class="stat-bar-grid"></div>
+              </div>
+
+              <div class="auction-card">
+                <div class="bid-summary">
+                  <div class="bid-tile" id="currentBidTile">
+                    <span>Current Bid</span>
+                    <strong id="currentBid">--</strong>
+                  </div>
+                  <div class="bid-tile">
+                    <span>Leading Team</span>
+                    <strong id="leadingTeam">No bids</strong>
+                  </div>
+                  <div class="bid-tile">
+                    <span>Fair Value</span>
+                    <strong id="fairValue">--</strong>
+                  </div>
+                  <div class="bid-tile">
+                    <span>Next Increment</span>
+                    <strong id="nextIncrement">--</strong>
+                  </div>
+                </div>
+
+                <div class="timer-wrap">
+                  <div class="timer-label-row">
+                    <span>Hammer Clock</span>
+                    <strong id="clockText">0.0s</strong>
+                  </div>
+                  <div class="timer-track">
+                    <div id="timerFill" class="timer-fill"></div>
+                  </div>
+                </div>
+
+                <div class="control-row">
+                  <button id="bidButton" class="button button-primary">
+                    Bid (B)
+                  </button>
+                  <button id="undoBidBtn" class="button button-ghost" disabled>
+                    Undo (U)
+                  </button>
+                  <button id="skipPlayerBtn" class="button button-ghost" disabled>
+                    Skip (S)
+                  </button>
+                  <div class="proxy-control">
+                    <label for="maxBidInput">Proxy cap</label>
+                    <input
+                      id="maxBidInput"
+                      type="number"
+                      min="0.25"
+                      step="0.25"
+                      inputmode="decimal"
+                    />
+                    <button id="setProxyBtn" class="button button-secondary">
+                      Set
+                    </button>
+                    <button id="clearProxyBtn" class="button button-ghost">
+                      Clear
+                    </button>
+                  </div>
+                </div>
+
+                <div class="insight-grid">
+                  <article class="insight-card">
+                    <p class="section-kicker">Market Read</p>
+                    <p id="marketRead" class="insight-text">
+                      The room will start reacting once the first player is
+                      nominated.
+                    </p>
+                  </article>
+                  <article class="insight-card">
+                    <p class="section-kicker">Bid Advice</p>
+                    <p id="bidAdvice" class="insight-text">
+                      Discipline matters more than impulse. Every price should
+                      fit your squad plan.
+                    </p>
+                  </article>
+                  <article class="insight-card">
+                    <p class="section-kicker">Nomination Angle</p>
+                    <p id="nominationReason" class="insight-text">
+                      Rival nomination logic appears here once the auction opens.
+                    </p>
+                  </article>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="split-row">
+            <section class="card log-card">
+              <div class="section-head">
+                <div>
+                  <p class="section-kicker">Auction Floor</p>
+                  <h2>Live Log</h2>
+                </div>
+              </div>
+              <div id="auctionLog" class="auction-log"></div>
+            </section>
+
+            <section class="card rival-card">
+              <div class="section-head">
+                <div>
+                  <p class="section-kicker">Game Theory</p>
+                  <h2>Rival Heat</h2>
+                </div>
+              </div>
+              <div id="rivalBoard" class="rival-board"></div>
+            </section>
+          </section>
+
+          <section class="card season-card">
+            <div class="section-head season-head">
+              <div>
+                <p class="section-kicker">Season Engine</p>
+                <h2>Tournament Center</h2>
+              </div>
+              <div class="season-actions">
+                <button id="simNextBtn" class="button button-secondary">
+                  Sim Next Match
+                </button>
+                <button id="simRoundBtn" class="button button-secondary">
+                  Sim Round
+                </button>
+                <button id="simSeasonBtn" class="button button-primary">
+                  Sim Season
+                </button>
+              </div>
+            </div>
+
+            <div class="season-grid">
+              <section class="season-panel">
+                <p class="section-kicker">Match Center</p>
+                <div id="seasonSummary" class="season-summary">
+                  Finish the auction to unlock the season schedule and points table.
+                </div>
+                <div id="recentMatches" class="recent-matches"></div>
+              </section>
+
+              <section class="season-panel">
+                <p class="section-kicker">Table</p>
+                <div id="pointsTable" class="points-table"></div>
+              </section>
+            </div>
+          </section>
+        </section>
+
+        <aside class="rail-column">
+          <section class="card franchise-card">
+            <div class="section-head">
+              <div>
+                <p class="section-kicker">Your Franchise</p>
+                <h2 id="userFranchiseName">Choose a team</h2>
+              </div>
+              <span id="userStrategy" class="pill neutral">No strategy loaded</span>
+            </div>
+
+            <div class="purse-row">
+              <div class="purse-block">
+                <span>Purse Left</span>
+                <strong id="userPurse">0.00 cr</strong>
+              </div>
+              <div class="purse-block">
+                <span>Slots Left</span>
+                <strong id="slotsLeft">0</strong>
+              </div>
+              <div class="purse-block">
+                <span>Proxy Bid</span>
+                <strong id="proxyStatus">Off</strong>
+              </div>
+            </div>
+
+            <div id="needsGrid" class="needs-grid"></div>
+          </section>
+
+          <section class="card squad-card">
+            <div class="section-head">
+              <div>
+                <p class="section-kicker">Roster Build</p>
+                <h2>Your Squad</h2>
+              </div>
+            </div>
+            <div id="userSquad" class="squad-list"></div>
+          </section>
+
+          <section class="card leaderboard-card">
+            <div class="section-head">
+              <div>
+                <p class="section-kicker">Power Index</p>
+                <h2>Projected Title Odds</h2>
+              </div>
+            </div>
+            <div id="leaderboard" class="leaderboard"></div>
+          </section>
+
+          <section class="card instructions-card">
+            <div class="section-head">
+              <div>
+                <p class="section-kicker">How To Play</p>
+                <h2>Owner Brief</h2>
+              </div>
+            </div>
+            <div class="instruction-copy">
+              <p>
+                Every franchise starts on equal money. Winning comes from timing,
+                not just aggressive bidding.
+              </p>
+              <ul>
+                <li>Use the live hammer clock to react before the lot closes.</li>
+                <li>Set a proxy cap when you know your walk-away price.</li>
+                <li>Track roster pressure so you do not leave gaps at keeper, spin, or death pace.</li>
+                <li>Read rival heat cards. Some teams are price inflators, others are pure value hunters.</li>
+                <li>Once squads are built, run a local season simulation with points, playoffs, and a final.</li>
+                <li>The app autosaves locally in your browser. Nothing leaves this device.</li>
+                <li>Keyboard shortcuts: <strong>B</strong> bid · <strong>P</strong> proxy cap · <strong>U</strong> undo bid · <strong>S</strong> skip lot · <strong>Esc</strong> clear proxy.</li>
+              </ul>
+            </div>
+          </section>
+        </aside>
+      </main>
+    </div>
+
+    <!-- Auction sim progress overlay -->
+    <div id="auctionSimOverlay" class="sim-overlay" aria-hidden="true">
+      <div class="sim-overlay-card">
+        <div class="sim-overlay-header">
+          <span id="simOverlayPhase" class="pitch-badge">Premium Sets</span>
+          <p class="sim-overlay-title">Simulating Auction</p>
+          <p id="simOverlayDesc" class="sim-overlay-desc">Resolving opening lots&hellip;</p>
+        </div>
+
+        <div class="sim-progress-wrap">
+          <div class="sim-progress-track">
+            <div id="simProgressBar" class="sim-progress-fill" style="width:0%"></div>
+          </div>
+          <div class="sim-progress-labels">
+            <span id="simProgressLots">Lot 0 / 0</span>
+            <span id="simProgressPct">0%</span>
+          </div>
+        </div>
+
+        <div id="simLiveFeed" class="sim-live-feed"></div>
+
+        <div class="sim-stats-row">
+          <div class="sim-stat">
+            <span>Sold</span>
+            <strong id="simStatSold">0</strong>
+          </div>
+          <div class="sim-stat">
+            <span>Unsold</span>
+            <strong id="simStatUnsold">0</strong>
+          </div>
+          <div class="sim-stat">
+            <span>Avg Price</span>
+            <strong id="simStatAvg">0.00 cr</strong>
+          </div>
+          <div class="sim-stat">
+            <span>Most Expensive</span>
+            <strong id="simStatTop">--</strong>
+          </div>
+        </div>
+
+        <button id="cancelSimBtn" class="button button-ghost sim-cancel-btn">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Season / Round sim overlay (lightweight) -->
+    <div id="seasonSimOverlay" class="sim-overlay season-sim-overlay" aria-hidden="true">
+      <div class="sim-overlay-card season-sim-card">
+        <p id="seasonSimLabel" class="sim-overlay-title">Simulating Season&hellip;</p>
+        <div class="sim-progress-wrap">
+          <div class="sim-progress-track">
+            <div id="seasonProgressBar" class="sim-progress-fill" style="width:0%"></div>
+          </div>
+          <div class="sim-progress-labels">
+            <span id="seasonProgressText">Match 0 / 0</span>
+            <span id="seasonProgressPct">0%</span>
+          </div>
+        </div>
+        <p id="seasonSimLastMatch" class="sim-overlay-desc">Starting&hellip;</p>
+      </div>
+    </div>
+
+    <!-- Pre-match tactics modal -->
+    <div id="tacticsModal" class="modal" aria-hidden="true">
+      <div class="modal-card tactics-card">
+        <p class="section-kicker">Pre-Match Intel</p>
+        <h2 id="tacticsMatchTitle">Your team is up next</h2>
+        <div class="pitch-header-row">
+          <span id="tacticsPitchBadge" class="pitch-badge">--</span>
+          <span id="tacticsPitchDesc" class="pitch-desc">--</span>
+        </div>
+        <p id="tacticsPitchHint" class="tactics-hint"></p>
+
+        <form id="tacticsForm" class="tactics-form">
+          <div class="tactic-group">
+            <p class="tactic-group-label">Batting Approach</p>
+            <div class="tactic-options" id="battingTacticOpts"></div>
+          </div>
+          <div class="tactic-group">
+            <p class="tactic-group-label">Powerplay Bowling</p>
+            <div class="tactic-options" id="powerplayTacticOpts"></div>
+          </div>
+          <div class="tactic-group">
+            <p class="tactic-group-label">Death Overs</p>
+            <div class="tactic-options" id="deathTacticOpts"></div>
+          </div>
+          <p id="tacticAdvisor" class="tactic-advisor">Pick your tactics above.</p>
+          <div class="setup-actions">
+            <button type="submit" class="button button-primary">Lock In &amp; Play</button>
+            <button type="button" id="autoTacticsBtn" class="button button-secondary">Auto-Select</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Live match animation panel (injected inside season-card via JS, but also a standalone modal overlay) -->
+    <div id="liveMatchModal" class="modal" aria-hidden="true">
+      <div class="modal-card live-match-card">
+        <div class="live-match-header">
+          <p class="section-kicker" id="liveMatchPhaseLabel">League</p>
+          <h2 id="liveMatchTitle">--</h2>
+          <div class="live-pitch-row">
+            <span id="livePitchBadge" class="pitch-badge">--</span>
+            <span id="livePitchDesc" class="pitch-desc-sm">--</span>
+          </div>
+        </div>
+
+        <div class="innings-block" id="inningsBlock1">
+          <p class="innings-team-label" id="innings1Label">1st Innings</p>
+          <div class="phase-bars" id="phaseBars1"></div>
+          <div class="innings-total-row">
+            <span id="innings1Total" class="innings-total-score">--</span>
+            <span id="innings1Best" class="innings-best">--</span>
+          </div>
+        </div>
+
+        <div class="innings-block" id="inningsBlock2">
+          <p class="innings-team-label" id="innings2Label">2nd Innings</p>
+          <div class="phase-bars" id="phaseBars2"></div>
+          <div class="innings-total-row">
+            <span id="innings2Total" class="innings-total-score">--</span>
+            <span id="innings2Best" class="innings-best">--</span>
+          </div>
+        </div>
+
+        <div class="live-result-block" id="liveResultBlock">
+          <p class="live-result-text" id="liveResultText"></p>
+          <p class="live-pom-text" id="livePomText"></p>
+          <div id="tacticFeedback" class="tactic-feedback"></div>
+        </div>
+
+        <div class="live-commentary" id="liveCommentary"></div>
+
+        <button id="closeLiveMatchBtn" class="button button-primary live-continue-btn hidden">
+          Continue →
+        </button>
+      </div>
+    </div>
+
+    <div id="setupModal" class="modal visible" aria-hidden="false">
+      <div class="modal-card">
+        <p class="section-kicker">Start Campaign</p>
+        <h2>Build an IPL-style franchise from the auction room</h2>
+        <p class="modal-text">
+          This version uses a real-player IPL sandbox: current recognizable IPL
+          players, equal 120 cr purse for every franchise, 16-player squad
+          target, 8-player overseas squad cap (4 in playing XI), and a local
+          season simulation after the auction.
+        </p>
+
+        <form id="setupForm" class="setup-form">
+          <label>
+            Franchise
+            <select id="franchiseSelect"></select>
+          </label>
+
+          <label>
+            Difficulty
+            <select id="difficultySelect"></select>
+          </label>
+
+          <label>
+            Auction Speed
+            <select id="speedSelect"></select>
+          </label>
+
+          <div class="setup-actions">
+            <button type="submit" class="button button-primary">
+              Enter Auction Room
+            </button>
+            <button
+              type="button"
+              id="loadAutosaveBtn"
+              class="button button-secondary"
+            >
+              Resume Autosave
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Season Awards Modal -->
+    <div id="seasonAwardsModal" class="modal-overlay" aria-hidden="true">
+      <div class="modal-panel awards-panel" id="seasonAwardsContent">
+      </div>
+    </div>
+
+    <script src="./data.js?v=4"></script>
+    <script src="./script.js?v=4"></script>
+  </body>
+</html>
