@@ -69,9 +69,16 @@
         </div>
       </header>
 
-      <main class="dashboard">
+      <nav id="tabBar" class="tab-bar hidden">
+        <button class="tab-btn active" data-tab="auction">Auction</button>
+        <button class="tab-btn" data-tab="season">Season</button>
+        <button class="tab-btn" data-tab="stats">Stats</button>
+        <button class="tab-btn" data-tab="myteam">My Team</button>
+      </nav>
+
+      <main class="dashboard" id="dashboard">
         <section class="arena-column">
-          <section class="card spotlight-card">
+          <section class="card spotlight-card" data-phase="auction">
             <div class="section-head">
               <div>
                 <p class="section-kicker">Live Lot</p>
@@ -177,7 +184,7 @@
             </div>
           </section>
 
-          <section class="split-row">
+          <section class="split-row" data-phase="auction">
             <section class="card log-card">
               <div class="section-head">
                 <div>
@@ -200,7 +207,7 @@
             </section>
           </section>
 
-          <section class="card season-card">
+          <section class="card season-card" data-phase="season">
             <div class="section-head season-head">
               <div>
                 <p class="section-kicker">Season Engine</p>
@@ -237,7 +244,7 @@
               <div class="section-head">
                 <div>
                   <p class="section-kicker">Scenario Mode</p>
-                  <h3>Pressure Situations</h3>
+                  <h3>Pressure Situations <button class="info-tip" data-tip="scenario"></button></h3>
                 </div>
               </div>
               <div class="scenario-controls">
@@ -258,11 +265,11 @@
           </section>
 
           <!-- Stats Database -->
-          <section class="card stats-card" id="statsSection">
+          <section class="card stats-card" id="statsSection" data-phase="stats">
             <div class="section-head">
               <div>
                 <p class="section-kicker">Player Database</p>
-                <h2>Season Stats</h2>
+                <h2>Season Stats <button class="info-tip" data-tip="statsColumns"></button></h2>
               </div>
               <div class="stats-toggle-row">
                 <button class="button button-secondary stats-tab active" data-stat-tab="batting" id="statsBattingTab">Batting</button>
@@ -288,7 +295,7 @@
           </section>
         </section>
 
-        <aside class="rail-column">
+        <aside class="rail-column" data-phase="myteam">
           <section class="card franchise-card">
             <div class="section-head">
               <div>
@@ -300,15 +307,15 @@
 
             <div class="purse-row">
               <div class="purse-block">
-                <span>Purse Left</span>
+                <span>Purse Left <button class="info-tip" data-tip="purse"></button></span>
                 <strong id="userPurse">0.00 cr</strong>
               </div>
               <div class="purse-block">
-                <span>Slots Left</span>
+                <span>Slots Left <button class="info-tip" data-tip="overseasCap"></button></span>
                 <strong id="slotsLeft">0</strong>
               </div>
               <div class="purse-block">
-                <span>Proxy Bid</span>
+                <span>Proxy Bid <button class="info-tip" data-tip="proxy"></button></span>
                 <strong id="proxyStatus">Off</strong>
               </div>
             </div>
@@ -432,6 +439,7 @@
         <div class="pitch-header-row">
           <span id="tacticsPitchBadge" class="pitch-badge">--</span>
           <span id="tacticsPitchDesc" class="pitch-desc">--</span>
+          <button class="info-tip" data-tip="pitchTypes"></button>
         </div>
         <p id="tacticsPitchHint" class="tactics-hint"></p>
 

@@ -185,6 +185,9 @@
     statsTableWrap: document.getElementById("statsTableWrap"),
     statsBattingTab: document.getElementById("statsBattingTab"),
     statsBowlingTab: document.getElementById("statsBowlingTab"),
+    // Tab bar
+    tabBar: document.getElementById("tabBar"),
+    dashboard: document.getElementById("dashboard"),
     // Scenario mode
     scenarioOpponent: document.getElementById("scenarioOpponent"),
     scenarioPitch: document.getElementById("scenarioPitch"),
@@ -241,6 +244,8 @@
     }
 
     initStatsListeners();
+    initInfoTips();
+    setActiveTab(getDefaultTab());
     render();
     startTicker();
   }
@@ -446,6 +451,13 @@
       runScenarioMode();
     });
 
+    // Tab bar navigation
+    refs.tabBar?.addEventListener("click", (e) => {
+      const btn = e.target.closest(".tab-btn");
+      if (!btn) return;
+      setActiveTab(btn.dataset.tab);
+    });
+
     refs.closeLiveMatchBtn.addEventListener("click", () => {
       hideLiveMatchModal();
     });
@@ -495,11 +507,14 @@
   function showSetup() {
     refs.setupModal.classList.add("visible");
     refs.setupModal.setAttribute("aria-hidden", "false");
+    refs.tabBar.classList.add("hidden");
   }
 
   function hideSetup() {
     refs.setupModal.classList.remove("visible");
     refs.setupModal.setAttribute("aria-hidden", "true");
+    refs.tabBar.classList.remove("hidden");
+    setActiveTab(getDefaultTab());
   }
 
   function createCampaign({ franchiseId, difficultyId, speedId }) {
@@ -1632,6 +1647,7 @@
     state.auction.currentLot = null;
     initializeSeason();
     addLog("Auction complete. The league schedule is now live.", "positive");
+    setActiveTab("season");
     render();
     persistState();
   }
@@ -3778,6 +3794,100 @@
   let statsSortDir = -1; // -1 = descending
   let statsDirty = true; // gate renderStats to avoid rebuilding on every render()
   let lastStatsMatchCount = -1;
+
+  // ── Tab Navigation ──────────────────────────────
+  let activeTab = "auction";
+
+  function getDefaultTab() {
+    if (!state) return "auction";
+    if (state.auction.status !== "complete") return "auction";
+    return "season";
+  }
+
+  function setActiveTab(tabId) {
+    activeTab = tabId;
+    // Update tab button states
+    refs.tabBar.querySelectorAll(".tab-btn").forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.tab === tabId);
+    });
+    // Show/hide sections by data-phase
+    document.querySelectorAll("[data-phase]").forEach((el) => {
+      el.classList.toggle("phase-visible", el.dataset.phase === tabId);
+    });
+    // My Team tab uses single-column layout since the aside is the main content
+    refs.dashboard.classList.toggle("single-col", tabId === "myteam");
+    // Mark stats dirty when switching to stats tab so it rebuilds
+    if (tabId === "stats") {
+      statsDirty = true;
+      renderStats();
+    }
+  }
+
+  // ── Info Tips ───────────────────────────────────
+  const INFO_TIPS = {
+    purse: {
+      title: "Auction Purse",
+      text: "Every franchise starts with <strong>₹120 crore</strong>. This is the total budget for building your 16-player squad. Unspent purse carries no advantage — spend wisely but completely.",
+    },
+    overseasCap: {
+      title: "Overseas Cap",
+      text: "You can sign up to <strong>8 overseas players</strong> in your squad, but only <strong>4 can play</strong> in any match XI. Plan your overseas mix carefully between batting, bowling, and all-round options.",
+    },
+    proxy: {
+      title: "Proxy Bidding",
+      text: "Set a <strong>maximum price</strong> you're willing to pay. The system auto-bids on your behalf up to that cap. Useful for contested lots where you know your walk-away price.",
+    },
+    statsColumns: {
+      title: "Stats Database",
+      text: "All stats are tracked <strong>per season</strong> and update after every match. Click any column header to sort. Use filters to narrow by team or role. Batting shows runs, SR, average, milestones. Bowling shows wickets, economy, best figures.",
+    },
+    pitchTypes: {
+      title: "Pitch Conditions",
+      text: "<strong>Flat Road:</strong> High scoring, suits batting. <strong>Green Top:</strong> Seam movement, pace bowlers dominate. <strong>Dusty Turner:</strong> Spin-friendly, slower scoring. <strong>Slow & Low:</strong> Low bounce, rewards patience and cutters.",
+    },
+    scenario: {
+      title: "Scenario Mode",
+      text: "Simulate a pressure chase situation. Set the opponent, pitch, target runs, overs left, and wickets in hand. Tests how your squad and tactics perform in clutch moments.",
+    },
+  };
+
+  let activePopover = null;
+
+  function initInfoTips() {
+    document.addEventListener("click", (e) => {
+      const tipBtn = e.target.closest(".info-tip");
+      // Close existing popover on any click
+      if (activePopover) {
+        activePopover.remove();
+        activePopover = null;
+        if (!tipBtn) return;
+      }
+      if (!tipBtn) return;
+      e.stopPropagation();
+      const key = tipBtn.dataset.tip;
+      const tip = INFO_TIPS[key];
+      if (!tip) return;
+
+      const popover = document.createElement("div");
+      popover.className = "info-popover";
+      popover.innerHTML = `<div class="pop-title">${tip.title}</div>${tip.text}`;
+      document.body.appendChild(popover);
+
+      // Position near the button
+      const rect = tipBtn.getBoundingClientRect();
+      let left = rect.left + rect.width / 2 - 160;
+      if (left < 8) left = 8;
+      if (left + 320 > window.innerWidth) left = window.innerWidth - 328;
+      popover.style.left = left + "px";
+      popover.style.top = (rect.bottom + 8) + "px";
+      activePopover = popover;
+      // Flip above if overflows bottom
+      const popRect = popover.getBoundingClientRect();
+      if (popRect.bottom > window.innerHeight - 8) {
+        popover.style.top = (rect.top - popRect.height - 8) + "px";
+      }
+    });
+  }
 
   function render() {
     renderTopBar();

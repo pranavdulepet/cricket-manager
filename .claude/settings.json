@@ -4,7 +4,10 @@
       "Read(//Users/macbookair/Desktop/desktop-subfolder/cricket-manager/**)",
       "Bash(node -e \":*)",
       "Bash(python3 -c \":*)",
-      "Bash(node -c script.js)"
+      "Bash(node -c script.js)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code} %{size_download}b\" http://localhost:8080/index.html)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code} %{size_download}b\" http://localhost:8080/script.js)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code} %{size_download}b\" http://localhost:8080/styles.css)"
     ]
   }
 }
